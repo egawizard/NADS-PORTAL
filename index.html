@@ -236,11 +236,59 @@
             background: rgba(0, 40, 20, 0.9);
         }
         
+        /* Rank Styling */
+        .rank-badge {
+            font-weight: 900;
+            font-size: 1.1rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #333;
+        }
+        
+        .rank-gold {
+            border-color: #FFD700 !important;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .rank-gold .rank-badge {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+            border-color: #FFD700;
+            text-shadow: none;
+        }
+        
+        .rank-silver {
+            border-color: #C0C0C0 !important;
+            box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
+        }
+        
+        .rank-silver .rank-badge {
+            background: linear-gradient(45deg, #C0C0C0, #808080);
+            color: #000;
+            border-color: #C0C0C0;
+            text-shadow: none;
+        }
+        
+        .rank-bronze {
+            border-color: #CD7F32 !important;
+            box-shadow: 0 0 15px rgba(205, 127, 50, 0.3);
+        }
+        
+        .rank-bronze .rank-badge {
+            background: linear-gradient(45deg, #CD7F32, #8B4513);
+            color: #fff;
+            border-color: #CD7F32;
+        }
+        
         .meme-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
         
         .meme-id {
@@ -837,13 +885,36 @@
                     return;
                 }
                 
-                memesGrid.innerHTML = memes.map(meme => {
+                // Sort memes by likes (descending) to show leaderboard ranking
+                const sortedMemes = [...memes].sort((a, b) => parseInt(b.likes.toString()) - parseInt(a.likes.toString()));
+                
+                memesGrid.innerHTML = sortedMemes.map((meme, index) => {
                     const isApproved = meme.approved;
                     const twitterId = extractTwitterId(meme.twitterLink);
+                    const rank = index + 1;
+                    
+                    // Determine rank styling
+                    let rankClass = '';
+                    let rankEmoji = '';
+                    if (rank === 1) {
+                        rankClass = 'rank-gold';
+                        rankEmoji = '🥇';
+                    } else if (rank === 2) {
+                        rankClass = 'rank-silver';
+                        rankEmoji = '🥈';
+                    } else if (rank === 3) {
+                        rankClass = 'rank-bronze';
+                        rankEmoji = '🥉';
+                    } else {
+                        rankEmoji = `#${rank}`;
+                    }
                     
                     return `
-                        <div class="meme-card ${isApproved ? 'approved' : ''}">
+                        <div class="meme-card ${isApproved ? 'approved' : ''} ${rankClass}">
                             <div class="meme-header">
+                                <div class="rank-badge ${rankClass}">
+                                    ${rankEmoji} ${rank <= 3 ? '' : 'Rank'}
+                                </div>
                                 <div class="meme-id">Meme #${meme.id}</div>
                                 <div class="approval-badge ${isApproved ? 'approved-badge' : 'pending-badge'}">
                                     ${isApproved ? '✅ Approved' : '⏳ Pending'}
@@ -890,7 +961,7 @@
                 
                 // Check which memes user has already liked
                 if (signer && userAddress) {
-                    for (const meme of memes) {
+                    for (const meme of sortedMemes) {
                         try {
                             const hasLiked = await readContract.liked(meme.id, userAddress);
                             if (hasLiked) {
