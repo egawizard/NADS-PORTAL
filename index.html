@@ -1,0 +1,624 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { ethers } from "ethers";
+import { ThumbsUp, CheckCircle2, XCircle, Loader2, Link as LinkIcon, LogIn, LogOut, Trophy, Clock, Send, RefreshCw } from "lucide-react";
+
+/**
+ * NADS PORTAL — Elegant On‑Chain Meme Portal (Monad Testnet)
+ *
+ * ✅ No Database Needed — Semua data on-chain
+ * ✅ Decentralized Content — Memes hosted di Twitter/X (via URL)
+ * ✅ Community Driven — Approval by voting on-chain
+ * ✅ Gas Efficient — Hanya metadata dan counters
+ * ✅ Censorship Resistant — Content off‑chain, approval on‑chain
+ *
+ * Network: Monad Testnet
+ * Chain ID: 10143 (0x279F)
+ * RPC: https://testnet-rpc.monad.xyz
+ *
+ * Contract (CA): 0x75d161eACE65EB2e0F01fE49c6902Bd5f0cfDa78
+ */
+
+const CONTRACT_ADDRESS = "0x75d161eACE65EB2e0F01fE49c6902Bd5f0cfDa78" as const;
+const CHAIN_ID_DEC = 10143;
+const CHAIN_ID_HEX = "0x279F" as const;
+const RPC_URL = "https://testnet-rpc.monad.xyz" as const;
+const CHAIN_NAME = "Monad Testnet" as const;
+
+const ABI = [
+  { "inputs": [{ "internalType": "uint256", "name": "_memeId", "type": "uint256" }], "name": "approveMeme", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "_memeId", "type": "uint256" }], "name": "likeMeme", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "memeId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "voter", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "totalApprovals", "type": "uint256" }], "name": "MemeApproved", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "memeId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "user", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "totalLikes", "type": "uint256" }], "name": "MemeLiked", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "memeId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "voter", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "totalRejections", "type": "uint256" }], "name": "MemeRejected", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "memeId", "type": "uint256" }, { "indexed": false, "internalType": "bool", "name": "approved", "type": "bool" }, { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }], "name": "MemeStatusChanged", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "memeId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "author", "type": "address" }, { "indexed": false, "internalType": "string", "name": "twitterUrl", "type": "string" }, { "indexed": false, "internalType": "string", "name": "title", "type": "string" }], "name": "MemeSubmitted", "type": "event" },
+  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "uint256", "name": "memeId", "type": "uint256" }, { "indexed": true, "internalType": "address", "name": "user", "type": "address" }, { "indexed": false, "internalType": "uint256", "name": "totalLikes", "type": "uint256" }], "name": "MemeUnliked", "type": "event" },
+  { "inputs": [{ "internalType": "uint256", "name": "_memeId", "type": "uint256" }], "name": "rejectMeme", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [ { "internalType": "string", "name": "_twitterUrl", "type": "string" }, { "internalType": "string", "name": "_title", "type": "string" }, { "internalType": "string", "name": "_description", "type": "string" } ], "name": "submitMeme", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "_memeId", "type": "uint256" }], "name": "unlikeMeme", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  { "inputs": [], "name": "APPROVAL_THRESHOLD", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "name": "approvedMemes", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "getApprovedMemes", "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "_memeId", "type": "uint256" }], "name": "getMeme", "outputs": [ { "components": [ { "internalType": "uint256", "name": "id", "type": "uint256" }, { "internalType": "string", "name": "twitterUrl", "type": "string" }, { "internalType": "string", "name": "title", "type": "string" }, { "internalType": "string", "name": "description", "type": "string" }, { "internalType": "address", "name": "author", "type": "address" }, { "internalType": "uint256", "name": "approvals", "type": "uint256" }, { "internalType": "uint256", "name": "rejections", "type": "uint256" }, { "internalType": "bool", "name": "isApproved", "type": "bool" }, { "internalType": "bool", "name": "exists", "type": "bool" }, { "internalType": "uint256", "name": "timestamp", "type": "uint256" }, { "internalType": "uint256", "name": "likes", "type": "uint256" } ], "internalType": "struct NADSPortal.Meme", "name": "", "type": "tuple" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "bool", "name": "_approved", "type": "bool" }, { "internalType": "uint256", "name": "_offset", "type": "uint256" }, { "internalType": "uint256", "name": "_limit", "type": "uint256" } ], "name": "getMemesByStatus", "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "getPendingMemes", "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "getRejectedMemes", "outputs": [{ "internalType": "uint256[]", "name": "", "type": "uint256[]" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "getTotalMemes", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "address", "name": "_user", "type": "address" }], "name": "getUserStats", "outputs": [ { "internalType": "uint256", "name": "memeCount", "type": "uint256" }, { "internalType": "uint256", "name": "totalLikes", "type": "uint256" }, { "internalType": "uint256", "name": "score", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "_memeId", "type": "uint256" }, { "internalType": "address", "name": "_user", "type": "address" } ], "name": "getUserVote", "outputs": [ { "internalType": "bool", "name": "hasVoted", "type": "bool" }, { "internalType": "bool", "name": "vote", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "_memeId", "type": "uint256" }, { "internalType": "address", "name": "_user", "type": "address" } ], "name": "hasUserLiked", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" }, { "internalType": "address", "name": "", "type": "address" } ], "name": "likes", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "memeCounter", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "name": "memes", "outputs": [ { "internalType": "uint256", "name": "id", "type": "uint256" }, { "internalType": "string", "name": "twitterUrl", "type": "string" }, { "internalType": "string", "name": "title", "type": "string" }, { "internalType": "string", "name": "description", "type": "string" }, { "internalType": "address", "name": "author", "type": "address" }, { "internalType": "uint256", "name": "approvals", "type": "uint256" }, { "internalType": "uint256", "name": "rejections", "type": "uint256" }, { "internalType": "bool", "name": "isApproved", "type": "bool" }, { "internalType": "bool", "name": "exists", "type": "bool" }, { "internalType": "uint256", "name": "timestamp", "type": "uint256" }, { "internalType": "uint256", "name": "likes", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "name": "pendingMemes", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "name": "rejectedMemes", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "REJECTION_THRESHOLD", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "userMemeCount", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "userTotalLikes", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" }, { "internalType": "address", "name": "", "type": "address" } ], "name": "votes", "outputs": [ { "internalType": "bool", "name": "hasVoted", "type": "bool" }, { "internalType": "bool", "name": "vote", "type": "bool" } ], "stateMutability": "view", "type": "function" }
+] as const;
+
+// ——— utility helpers ———
+const shortAddr = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "");
+const timeAgo = (unix?: bigint | number) => {
+  if (!unix) return "";
+  const ts = typeof unix === "bigint" ? Number(unix) : unix;
+  const diff = Date.now() / 1000 - ts;
+  if (diff < 60) return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
+
+function useContract(providerOrSigner: ethers.Provider | ethers.Signer | null) {
+  return useMemo(() => {
+    if (!providerOrSigner) return null;
+    return new ethers.Contract(CONTRACT_ADDRESS, ABI, providerOrSigner);
+  }, [providerOrSigner]);
+}
+
+export default function App() {
+  const [account, setAccount] = useState<string | null>(null);
+  const [chainOk, setChainOk] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+
+  const [tab, setTab] = useState<"submit" | "pending" | "approved" | "leaderboard" | "me">("approved");
+
+  const [memesPending, setMemesPending] = useState<any[]>([]);
+  const [memesApproved, setMemesApproved] = useState<any[]>([]);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  const [form, setForm] = useState({ url: "", title: "", desc: "" });
+
+  const readContract = useContract(provider);
+  const writeContract = useContract(signer);
+
+  // ——— wallet connect ———
+  const connect = async () => {
+    try {
+      if (!("ethereum" in window)) throw new Error("Wallet not found");
+      const eth = (window as any).ethereum;
+      const accounts: string[] = await eth.request({ method: "eth_requestAccounts" });
+      const chainId: string = await eth.request({ method: "eth_chainId" });
+      if (chainId !== CHAIN_ID_HEX) {
+        try {
+          await eth.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: CHAIN_ID_HEX,
+                chainName: CHAIN_NAME,
+                nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                rpcUrls: [RPC_URL],
+              },
+            ],
+          });
+        } catch (e) {
+          // if add fails, try switch
+          await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID_HEX }] });
+        }
+      }
+      const prov = new ethers.BrowserProvider(eth);
+      const s = await prov.getSigner();
+      setProvider(prov);
+      setSigner(s);
+      setAccount(await s.getAddress());
+      const currentChain = await prov.getNetwork();
+      setChainOk(Number(currentChain.chainId) === CHAIN_ID_DEC);
+    } catch (e: any) {
+      alert(e?.message || "Failed to connect wallet");
+    }
+  };
+
+  const disconnect = () => {
+    setAccount(null);
+    setSigner(null);
+    // keep provider for read-only
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      if (!("ethereum" in window)) return;
+      const eth = (window as any).ethereum;
+      const prov = new ethers.BrowserProvider(eth);
+      setProvider(prov);
+      try {
+        const accs: string[] = await eth.request({ method: "eth_accounts" });
+        const chainId: string = await eth.request({ method: "eth_chainId" });
+        setChainOk(chainId === CHAIN_ID_HEX);
+        if (accs && accs[0]) {
+          const s = await prov.getSigner();
+          setSigner(s);
+          setAccount(accs[0]);
+        }
+      } catch {}
+      eth.on?.("accountsChanged", (accs: string[]) => {
+        setAccount(accs[0] || null);
+      });
+      eth.on?.("chainChanged", (cid: string) => {
+        setChainOk(cid === CHAIN_ID_HEX);
+        setRefreshKey((k) => k + 1);
+      });
+    };
+    init();
+  }, []);
+
+  // ——— data loaders ———
+  const fetchIds = async (approved: boolean, offset = 0, limit = 50): Promise<bigint[]> => {
+    if (!readContract) return [] as any;
+    const ids: bigint[] = await readContract.getMemesByStatus(approved, offset, limit);
+    return ids || [];
+  };
+
+  const fetchMeme = async (id: bigint | number) => {
+    if (!readContract) return null;
+    const m = await readContract.getMeme(id);
+    return m;
+  };
+
+  const refreshData = async () => {
+    if (!readContract) return;
+    setLoading(true);
+    try {
+      const [pendingIds, approvedIds] = await Promise.all([
+        fetchIds(false, 0, 50),
+        fetchIds(true, 0, 50),
+      ]);
+      const [pending, approved] = await Promise.all([
+        Promise.all(pendingIds.map((id) => fetchMeme(id))).then((arr) => (arr.filter(Boolean) as any[]).sort((a, b) => Number(b.timestamp) - Number(a.timestamp))),
+        Promise.all(approvedIds.map((id) => fetchMeme(id))).then((arr) => (arr.filter(Boolean) as any[]).sort((a, b) => Number(b.likes) - Number(a.likes))),
+      ]);
+      setMemesPending(pending);
+      setMemesApproved(approved);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readContract, refreshKey]);
+
+  // ——— write actions ———
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!writeContract) return alert("Connect wallet first");
+    try {
+      setLoading(true);
+      const tx = await writeContract.submitMeme(form.url.trim(), form.title.trim(), form.desc.trim());
+      await tx.wait();
+      setForm({ url: "", title: "", desc: "" });
+      setTab("pending");
+      refreshData();
+    } catch (e: any) {
+      alert(e?.reason || e?.shortMessage || e?.message || "Failed to submit");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approve = async (id: bigint | number) => {
+    if (!writeContract) return alert("Connect wallet first");
+    try {
+      setLoading(true);
+      const tx = await writeContract.approveMeme(id);
+      await tx.wait();
+      refreshData();
+    } catch (e: any) {
+      alert(e?.reason || e?.shortMessage || e?.message || "Approve failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reject = async (id: bigint | number) => {
+    if (!writeContract) return alert("Connect wallet first");
+    try {
+      setLoading(true);
+      const tx = await writeContract.rejectMeme(id);
+      await tx.wait();
+      refreshData();
+    } catch (e: any) {
+      alert(e?.reason || e?.shortMessage || e?.message || "Reject failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleLike = async (m: any) => {
+    if (!writeContract || !account) return alert("Connect wallet first");
+    try {
+      setLoading(true);
+      const has = await readContract!.hasUserLiked(m.id, account);
+      const tx = has ? await writeContract.unlikeMeme(m.id) : await writeContract.likeMeme(m.id);
+      await tx.wait();
+      refreshData();
+    } catch (e: any) {
+      alert(e?.reason || e?.shortMessage || e?.message || "Like/unlike failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ——— derived: leaderboard ———
+  const leaderboard = useMemo(() => {
+    const map: Record<string, { likes: number; memes: number }> = {};
+    for (const m of memesApproved) {
+      const a = m.author as string;
+      map[a] = map[a] || { likes: 0, memes: 0 };
+      map[a].likes += Number(m.likes);
+      map[a].memes += 1;
+    }
+    const arr = Object.entries(map).map(([addr, v]) => ({ addr, ...v }));
+    arr.sort((x, y) => y.likes - x.likes);
+    return arr;
+  }, [memesApproved]);
+
+  // ——— UI ———
+  return (
+    <div className="min-h-screen w-full bg-[#0a0a0b] text-zinc-100">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        {/* Header */}
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-amber-400/80 to-yellow-600 shadow-[0_0_30px_rgba(234,179,8,0.25)]" />
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">NADS PORTAL</h1>
+              <p className="text-xs text-zinc-400">Elegant On‑Chain Meme Curation · Monad Testnet</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refreshData}
+              className="hidden md:inline-flex items-center gap-2 rounded-2xl bg-zinc-800 px-3 py-2 text-sm hover:bg-zinc-700 transition"
+            >
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </button>
+            {account ? (
+              <button
+                onClick={disconnect}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 px-3 py-2 text-sm font-medium text-black shadow hover:opacity-95"
+              >
+                <LogOut className="h-4 w-4" /> {shortAddr(account)}
+              </button>
+            ) : (
+              <button
+                onClick={connect}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 px-3 py-2 text-sm font-semibold text-black shadow hover:opacity-95"
+              >
+                <LogIn className="h-4 w-4" /> Connect Wallet
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Network Notice */}
+        <div className={`mt-4 rounded-2xl border ${chainOk ? "border-emerald-500/30 bg-emerald-500/10" : "border-rose-500/30 bg-rose-500/10"} px-4 py-3 text-sm`}> 
+          {chainOk ? (
+            <div>Connected to <span className="font-semibold">{CHAIN_NAME}</span>. CA: <span className="font-mono text-amber-300">{CONTRACT_ADDRESS}</span></div>
+          ) : (
+            <div>
+              Wrong network. Please switch to <span className="font-semibold">{CHAIN_NAME}</span> (Chain ID {CHAIN_ID_DEC}). <button onClick={connect} className="underline">Switch now</button>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <nav className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-zinc-900 p-1 md:grid-cols-5">
+          {[
+            { id: "approved", label: "Approved" },
+            { id: "pending", label: "Pending" },
+            { id: "submit", label: "Submit" },
+            { id: "leaderboard", label: "Leaderboard" },
+            { id: "me", label: "My Profile" },
+          ].map((t: any) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`rounded-xl px-3 py-2 text-sm transition ${tab === t.id ? "bg-amber-500 text-black font-semibold" : "hover:bg-zinc-800"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Content */}
+        <main className="mt-6">
+          {tab === "submit" && (
+            <section className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-lg">
+              <h2 className="mb-4 text-xl font-semibold">Submit Meme (Twitter/X URL)</h2>
+              <form onSubmit={submit} className="grid gap-4">
+                <div>
+                  <label className="text-sm text-zinc-400">Twitter/X URL</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="flex grow items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950 px-3 py-2 focus-within:border-amber-500">
+                      <LinkIcon className="h-4 w-4 text-zinc-500" />
+                      <input
+                        required
+                        type="url"
+                        placeholder="https://x.com/username/status/123..."
+                        value={form.url}
+                        onChange={(e) => setForm((s) => ({ ...s, url: e.target.value }))}
+                        className="w-full bg-transparent text-sm outline-none"
+                      />
+                    </div>
+                    <a href={form.url || "#"} target="_blank" className="rounded-xl border border-zinc-700 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800">Preview</a>
+                  </div>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-zinc-400">Title</label>
+                    <input
+                      required
+                      maxLength={80}
+                      value={form.title}
+                      onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))}
+                      className="mt-1 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-amber-500"
+                      placeholder="e.g. Monad devs be like…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-zinc-400">Description</label>
+                    <input
+                      maxLength={160}
+                      value={form.desc}
+                      onChange={(e) => setForm((s) => ({ ...s, desc: e.target.value }))}
+                      className="mt-1 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-amber-500"
+                      placeholder="Optional context"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-400">No database · approval & likes on-chain · gas required</p>
+                  <button
+                    disabled={loading || !chainOk}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 px-4 py-2 text-sm font-semibold text-black shadow hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Submit
+                  </button>
+                </div>
+              </form>
+              <p className="mt-4 text-xs text-zinc-500">Tip: Gunakan link tweet bergambar/video. Portal ini hanya menyimpan URL + meta di blockchain.</p>
+            </section>
+          )}
+
+          {tab === "pending" && (
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Pending Memes</h2>
+                <button onClick={refreshData} className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </button>
+              </div>
+              <Grid>
+                {memesPending.length === 0 && <EmptyState text="No pending memes" />}
+                {memesPending.map((m) => (
+                  <MemeCard
+                    key={String(m.id)}
+                    m={m}
+                    onApprove={() => approve(m.id)}
+                    onReject={() => reject(m.id)}
+                    onLike={() => toggleLike(m)}
+                    canModerate={!!account}
+                    canLike={false}
+                  />
+                ))}
+              </Grid>
+            </section>
+          )}
+
+          {tab === "approved" && (
+            <section>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Top Memes (Approved)</h2>
+                <button onClick={refreshData} className="inline-flex items-center gap-2 rounded-2xl border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </button>
+              </div>
+              <Grid>
+                {memesApproved.length === 0 && <EmptyState text="No approved memes yet" />}
+                {memesApproved.map((m) => (
+                  <MemeCard
+                    key={String(m.id)}
+                    m={m}
+                    onApprove={undefined}
+                    onReject={undefined}
+                    onLike={() => toggleLike(m)}
+                    canModerate={false}
+                    canLike={!!account}
+                  />
+                ))}
+              </Grid>
+            </section>
+          )}
+
+          {tab === "leaderboard" && (
+            <section className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-lg">
+              <div className="mb-4 flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-400" />
+                <h2 className="text-xl font-semibold">Creator Leaderboard</h2>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-950 text-zinc-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Rank</th>
+                      <th className="px-3 py-2 text-left font-medium">Creator</th>
+                      <th className="px-3 py-2 text-right font-medium">Likes</th>
+                      <th className="px-3 py-2 text-right font-medium">Memes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-6 text-center text-zinc-500">No data yet</td>
+                      </tr>
+                    )}
+                    {leaderboard.map((row, i) => (
+                      <tr key={row.addr} className="odd:bg-zinc-900/40">
+                        <td className="px-3 py-2">#{i + 1}</td>
+                        <td className="px-3 py-2 font-mono">{shortAddr(row.addr)}</td>
+                        <td className="px-3 py-2 text-right">{row.likes}</td>
+                        <td className="px-3 py-2 text-right">{row.memes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-xs text-zinc-500">Leaderboard dihitung dari total likes pada semua meme yang sudah disetujui.</p>
+            </section>
+          )}
+
+          {tab === "me" && (
+            <section className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-lg">
+              <h2 className="mb-4 text-xl font-semibold">My Profile</h2>
+              {account ? (
+                <MyStats address={account} contract={readContract} />
+              ) : (
+                <div className="text-sm text-zinc-400">Please connect your wallet.</div>
+              )}
+            </section>
+          )}
+        </main>
+      </div>
+
+      {/* Twitter embed script (for nicer previews). Safe to keep once on page. */}
+      <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
+    </div>
+  );
+}
+
+function Grid({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">{children}</div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="col-span-full rounded-3xl border border-dashed border-zinc-700 p-10 text-center text-sm text-zinc-400">
+      {text}
+    </div>
+  );
+}
+
+function MemeCard({ m, onApprove, onReject, onLike, canModerate, canLike }: { m: any; onApprove?: () => void; onReject?: () => void; onLike?: () => void; canModerate: boolean; canLike: boolean; }) {
+  const tweetId = useMemo(() => extractTweetId(m.twitterUrl), [m.twitterUrl]);
+  return (
+    <article className="rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-950 p-4 shadow-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold leading-tight">{m.title}</h3>
+          <p className="text-xs text-zinc-400">by <span className="font-mono">{shortAddr(m.author)}</span> · <Clock className="mr-1 inline h-3 w-3" />{timeAgo(m.timestamp)}</p>
+        </div>
+        {m.isApproved ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-xs text-emerald-300"><CheckCircle2 className="h-3 w-3" /> Approved</span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">Pending</span>
+        )}
+      </div>
+
+      <p className="mt-2 line-clamp-3 text-sm text-zinc-300">{m.description}</p>
+
+      <div className="mt-3 overflow-hidden rounded-2xl border border-zinc-800 bg-black/50">
+        {/* If we can extract Tweet ID, render embed. Else simple link. */}
+        {tweetId ? (
+          <blockquote className="twitter-tweet" data-theme="dark">
+            <a href={m.twitterUrl}></a>
+          </blockquote>
+        ) : (
+          <a href={m.twitterUrl} target="_blank" className="block px-4 py-6 text-center text-sm text-amber-300 underline">
+            Open Tweet ↗
+          </a>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 text-sm text-zinc-400">
+          <span className="inline-flex items-center gap-1"><ThumbsUp className="h-4 w-4" /> {Number(m.likes)}</span>
+          <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> {Number(m.approvals)}</span>
+          <span className="inline-flex items-center gap-1"><XCircle className="h-4 w-4" /> {Number(m.rejections)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {canModerate && !m.isApproved && (
+            <>
+              <button onClick={onApprove} className="rounded-xl bg-emerald-500/20 px-3 py-2 text-xs text-emerald-300 hover:bg-emerald-500/30">Approve</button>
+              <button onClick={onReject} className="rounded-xl bg-rose-500/20 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/30">Reject</button>
+            </>
+          )}
+          {canLike && m.isApproved && (
+            <button onClick={onLike} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-black hover:opacity-95">
+              <ThumbsUp className="h-4 w-4" /> Like / Unlike
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function extractTweetId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split("/").filter(Boolean);
+    const id = parts.find((p) => /^\d+$/.test(p));
+    return id || null;
+  } catch {
+    return null;
+  }
+}
+
+function MyStats({ address, contract }: { address: string; contract: any }) {
+  const [stats, setStats] = useState<{ memeCount: number; totalLikes: number; score: number } | null>(null);
+  useEffect(() => {
+    const run = async () => {
+      if (!contract || !address) return;
+      const s = await contract.getUserStats(address);
+      setStats({ memeCount: Number(s.memeCount), totalLikes: Number(s.totalLikes), score: Number(s.score) });
+    };
+    run();
+  }, [address, contract]);
+
+  if (!stats) return <div className="text-sm text-zinc-400">Loading…</div>;
+  return (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+        <div className="text-xs text-zinc-400">Memes Submitted</div>
+        <div className="mt-1 text-2xl font-semibold">{stats.memeCount}</div>
+      </div>
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+        <div className="text-xs text-zinc-400">Total Likes</div>
+        <div className="mt-1 text-2xl font-semibold">{stats.totalLikes}</div>
+      </div>
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+        <div className="text-xs text-zinc-400">Score</div>
+        <div className="mt-1 text-2xl font-semibold">{stats.score}</div>
+      </div>
+    </div>
+  );
+}
