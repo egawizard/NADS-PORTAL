@@ -835,12 +835,27 @@
                 
                 // Check if on correct network
                 const network = await provider.getNetwork();
+                console.log('Current network:', network);
+                
                 if (network.chainId.toString() !== '10143') {
                     await switchToMonadNetwork();
+                    // Refresh provider after network switch
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner();
                 }
 
                 // Setup contract
                 contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+                console.log('Contract initialized:', CONTRACT_ADDRESS);
+
+                // Test contract connection
+                try {
+                    const totalMemes = await contract.getTotalMemes();
+                    console.log('Contract test successful, total memes:', totalMemes.toString());
+                } catch (contractError) {
+                    console.error('Contract test failed:', contractError);
+                    throw new Error('Failed to connect to smart contract. Please check the contract address.');
+                }
 
                 // Update UI
                 document.getElementById('connectWallet').textContent = 'Connected';
@@ -851,7 +866,7 @@
                 // Setup form submission
                 setupFormSubmission();
 
-                showSuccess('Wallet connected successfully!');
+                showSuccess('Wallet connected successfully! 🎉');
                 
                 // Load content
                 loadStats();
@@ -859,7 +874,15 @@
 
             } catch (error) {
                 console.error('Error connecting wallet:', error);
-                showError('Failed to connect wallet: ' + error.message);
+                let errorMessage = 'Failed to connect wallet';
+                
+                if (error.code === 4001) {
+                    errorMessage = 'Connection rejected by user';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showError(errorMessage);
             }
         }
 
@@ -920,32 +943,85 @@
                 submitBtn.textContent = 'Submitting...';
                 submitBtn.disabled = true;
 
-                const twitterUrl = document.getElementById('twitterUrl').value;
-                const title = document.getElementById('title').value;
-                const description = document.getElementById('description').value;
+                const twitterUrl = document.getElementById('twitterUrl').value.trim();
+                const title = document.getElementById('title').value.trim();
+                const description = document.getElementById('description').value.trim();
 
-                // Validate Twitter URL
+                // Validate inputs
+                if (!twitterUrl || !title || !description) {
+                    throw new Error('Please fill in all fields');
+                }
+
                 if (!isValidTwitterUrl(twitterUrl)) {
                     throw new Error('Please enter a valid Twitter/X URL');
                 }
 
-                // Submit to blockchain
-                const tx = await contract.submitMeme(twitterUrl, title, description);
-                showSuccess('Transaction submitted! Waiting for confirmation...');
+                if (title.length > 100) {
+                    throw new Error('Title must be less than 100 characters');
+                }
+
+                if (description.length > 500) {
+                    throw new Error('Description must be less than 500 characters');
+                }
+
+                // Estimate gas first
+                submitBtn.textContent = 'Estimating gas...';
                 
-                await tx.wait();
-                showSuccess('Meme submitted successfully!');
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.submitMeme.estimateGas(twitterUrl, title, description);
+                    console.log('Gas estimate:', gasEstimate.toString());
+                } catch (gasError) {
+                    console.error('Gas estimation failed:', gasError);
+                    throw new Error('Transaction would fail. Please check your inputs and try again.');
+                }
 
-                // Clear form
-                document.getElementById('submitForm').reset();
-
-                // Refresh stats and pending memes
-                loadStats();
-                loadPendingMemes();
+                // Submit to blockchain with explicit gas limit
+                submitBtn.textContent = 'Sending transaction...';
+                const tx = await contract.submitMeme(twitterUrl, title, description, {
+                    gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
+                });
+                
+                showSuccess('Transaction submitted! Hash: ' + tx.hash.substring(0, 10) + '...');
+                
+                submitBtn.textContent = 'Confirming...';
+                const receipt = await tx.wait();
+                
+                if (receipt.status === 1) {
+                    showSuccess('Meme submitted successfully! 🎉');
+                    
+                    // Clear form
+                    document.getElementById('submitForm').reset();
+                    
+                    // Refresh stats and pending memes
+                    setTimeout(() => {
+                        loadStats();
+                        loadPendingMemes();
+                    }, 2000);
+                } else {
+                    throw new Error('Transaction failed');
+                }
 
             } catch (error) {
                 console.error('Error submitting meme:', error);
-                showError('Failed to submit meme: ' + error.message);
+                
+                let errorMessage = 'Failed to submit meme';
+                
+                if (error.code === 4001) {
+                    errorMessage = 'Transaction cancelled by user';
+                } else if (error.code === -32603) {
+                    errorMessage = 'Transaction failed - please check your inputs';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = 'Insufficient funds for gas';
+                } else if (error.message.includes('user rejected')) {
+                    errorMessage = 'Transaction rejected by user';
+                } else if (error.reason) {
+                    errorMessage = error.reason;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showError(errorMessage);
             } finally {
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
@@ -1100,19 +1176,51 @@
                     return;
                 }
 
-                const tx = await contract.approveMeme(memeId);
-                showSuccess('Vote submitted! Waiting for confirmation...');
+                // Disable button during transaction
+                const button = event.target;
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Approving...';
+
+                // Check if user has already voted
+                const userVote = await contract.getUserVote(memeId, userAddress);
+                if (userVote.hasVoted) {
+                    throw new Error('You have already voted on this meme');
+                }
+
+                const tx = await contract.approveMeme(memeId, {
+                    gasLimit: 100000n // Set reasonable gas limit
+                });
+                showSuccess('Vote submitted! Hash: ' + tx.hash.substring(0, 10) + '...');
                 
                 await tx.wait();
-                showSuccess('Meme approved successfully!');
+                showSuccess('Meme approved successfully! 👍');
 
                 // Refresh data
-                loadStats();
-                loadPendingMemes();
+                setTimeout(() => {
+                    loadStats();
+                    loadPendingMemes();
+                }, 2000);
                 
             } catch (error) {
                 console.error('Error approving meme:', error);
-                showError('Failed to approve meme: ' + error.message);
+                
+                let errorMessage = 'Failed to approve meme';
+                if (error.code === 4001) {
+                    errorMessage = 'Transaction cancelled by user';
+                } else if (error.reason) {
+                    errorMessage = error.reason;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showError(errorMessage);
+            } finally {
+                // Re-enable button
+                if (event && event.target) {
+                    event.target.disabled = false;
+                    event.target.textContent = originalText;
+                }
             }
         }
 
@@ -1124,19 +1232,51 @@
                     return;
                 }
 
-                const tx = await contract.rejectMeme(memeId);
-                showSuccess('Vote submitted! Waiting for confirmation...');
+                // Disable button during transaction
+                const button = event.target;
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Rejecting...';
+
+                // Check if user has already voted
+                const userVote = await contract.getUserVote(memeId, userAddress);
+                if (userVote.hasVoted) {
+                    throw new Error('You have already voted on this meme');
+                }
+
+                const tx = await contract.rejectMeme(memeId, {
+                    gasLimit: 100000n // Set reasonable gas limit
+                });
+                showSuccess('Vote submitted! Hash: ' + tx.hash.substring(0, 10) + '...');
                 
                 await tx.wait();
-                showSuccess('Meme rejected successfully!');
+                showSuccess('Meme rejected successfully! 👎');
 
                 // Refresh data
-                loadStats();
-                loadPendingMemes();
+                setTimeout(() => {
+                    loadStats();
+                    loadPendingMemes();
+                }, 2000);
                 
             } catch (error) {
                 console.error('Error rejecting meme:', error);
-                showError('Failed to reject meme: ' + error.message);
+                
+                let errorMessage = 'Failed to reject meme';
+                if (error.code === 4001) {
+                    errorMessage = 'Transaction cancelled by user';
+                } else if (error.reason) {
+                    errorMessage = error.reason;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showError(errorMessage);
+            } finally {
+                // Re-enable button
+                if (event && event.target) {
+                    event.target.disabled = false;
+                    event.target.textContent = originalText;
+                }
             }
         }
 
@@ -1152,20 +1292,32 @@
                 const hasLiked = await contract.hasUserLiked(memeId, userAddress);
                 
                 const tx = hasLiked ? 
-                    await contract.unlikeMeme(memeId) : 
-                    await contract.likeMeme(memeId);
+                    await contract.unlikeMeme(memeId, { gasLimit: 80000n }) : 
+                    await contract.likeMeme(memeId, { gasLimit: 80000n });
                     
-                showSuccess(`${hasLiked ? 'Unlike' : 'Like'} submitted! Waiting for confirmation...`);
+                showSuccess(`${hasLiked ? 'Unlike' : 'Like'} submitted! Hash: ${tx.hash.substring(0, 10)}...`);
                 
                 await tx.wait();
-                showSuccess(`Meme ${hasLiked ? 'unliked' : 'liked'} successfully!`);
+                showSuccess(`Meme ${hasLiked ? 'unliked' : 'liked'} successfully! ${hasLiked ? '💔' : '❤️'}`);
 
                 // Refresh approved memes
-                loadApprovedMemes();
+                setTimeout(() => {
+                    loadApprovedMemes();
+                }, 2000);
                 
             } catch (error) {
                 console.error('Error toggling like:', error);
-                showError(`Failed to ${hasLiked ? 'unlike' : 'like'} meme: ` + error.message);
+                
+                let errorMessage = 'Failed to toggle like';
+                if (error.code === 4001) {
+                    errorMessage = 'Transaction cancelled by user';
+                } else if (error.reason) {
+                    errorMessage = error.reason;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showError(errorMessage);
             }
         }
 
