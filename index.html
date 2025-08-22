@@ -626,6 +626,15 @@
                 // Initialize contract
                 contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
+                // Test contract connection
+                try {
+                    const totalMemes = await contract.getTotalMemes();
+                    console.log('Contract connected successfully. Total memes:', totalMemes.toString());
+                } catch (contractError) {
+                    console.error('Contract connection test failed:', contractError);
+                    throw new Error('Failed to connect to contract');
+                }
+
                 // Update UI
                 updateWalletInfo();
                 
@@ -898,48 +907,97 @@
                 return;
             }
 
-            const twitterUrl = document.getElementById('twitterUrl').value;
-            const title = document.getElementById('memeTitle').value;
-            const description = document.getElementById('memeDescription').value;
+            const twitterUrl = document.getElementById('twitterUrl').value.trim();
+            const title = document.getElementById('memeTitle').value.trim();
+            const description = document.getElementById('memeDescription').value.trim();
 
-            // Validate Twitter URL
-            if (!isValidTwitterUrl(twitterUrl)) {
-                alert('Please enter a valid Twitter URL.');
+            // Validate inputs
+            if (!twitterUrl || !title) {
+                alert('Please fill in both Twitter URL and Title fields.');
                 return;
             }
 
+            // Validate Twitter URL
+            if (!isValidTwitterUrl(twitterUrl)) {
+                alert('Please enter a valid Twitter URL (twitter.com or x.com).');
+                return;
+            }
+
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+
             try {
-                const submitButton = event.target.querySelector('button[type="submit"]');
-                submitButton.textContent = 'Submitting...';
+                submitButton.textContent = 'SUBMITTING...';
                 submitButton.disabled = true;
 
-                const tx = await contract.submitMeme(twitterUrl, title, description);
+                console.log('Submitting meme:', { twitterUrl, title, description });
+
+                // Estimate gas first
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.submitMeme.estimateGas(twitterUrl, title, description || "");
+                    console.log('Gas estimate:', gasEstimate.toString());
+                } catch (gasError) {
+                    console.error('Gas estimation failed:', gasError);
+                    throw new Error('Failed to estimate gas. Please check your inputs and try again.');
+                }
+
+                // Send transaction with gas limit
+                const tx = await contract.submitMeme(twitterUrl, title, description || "", {
+                    gasLimit: gasEstimate * BigInt(120) / BigInt(100) // Add 20% buffer
+                });
+                
                 console.log('Transaction sent:', tx.hash);
+                console.log('Waiting for confirmation...');
+
+                submitButton.textContent = 'CONFIRMING...';
 
                 // Wait for confirmation
-                await tx.wait();
+                const receipt = await tx.wait();
+                console.log('Transaction confirmed:', receipt);
                 
-                alert('Meme submitted successfully! It will be reviewed by the community.');
+                alert('🎉 Meme submitted successfully! It will now be reviewed by the community for approval.');
                 
                 // Reset form
                 document.getElementById('submitMemeForm').reset();
                 
-                submitButton.textContent = 'Submit Meme';
-                submitButton.disabled = false;
+                // Show success feedback
+                submitButton.style.background = 'linear-gradient(45deg, #00ff88, #00ccff)';
+                submitButton.textContent = '✅ SUCCESS!';
+                
+                setTimeout(() => {
+                    submitButton.style.background = '';
+                    submitButton.textContent = originalText;
+                    submitButton.disabled = false;
+                }, 3000);
 
             } catch (error) {
                 console.error('Error submitting meme:', error);
-                alert('Failed to submit meme. Please try again.');
                 
-                const submitButton = event.target.querySelector('button[type="submit"]');
-                submitButton.textContent = 'Submit Meme';
+                let errorMessage = 'Failed to submit meme. ';
+                
+                if (error.message.includes('user rejected')) {
+                    errorMessage += 'Transaction was cancelled by user.';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage += 'Insufficient funds for gas fees.';
+                } else if (error.message.includes('gas')) {
+                    errorMessage += 'Gas estimation failed. Please try again.';
+                } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+                    errorMessage += 'Contract execution may fail. Please check your inputs.';
+                } else {
+                    errorMessage += 'Please check your connection and try again.';
+                }
+                
+                alert(errorMessage);
+                
+                submitButton.textContent = originalText;
                 submitButton.disabled = false;
             }
         }
 
         // Validate Twitter URL
         function isValidTwitterUrl(url) {
-            const twitterRegex = /^https:\/\/(twitter\.com|x\.com)\/\w+\/status\/\d+/;
+            const twitterRegex = /^https:\/\/(twitter\.com|x\.com)\/[\w]+\/status\/\d+/;
             return twitterRegex.test(url);
         }
 
