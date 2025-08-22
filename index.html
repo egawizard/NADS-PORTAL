@@ -202,6 +202,68 @@
             margin-top: 0.5rem;
         }
         
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .tab-btn {
+            background: rgba(0, 20, 40, 0.8);
+            color: #aaa;
+            border: 2px solid #333;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+        
+        .tab-btn:hover {
+            border-color: #00ff88;
+            color: #00ff88;
+            transform: scale(1.05);
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(45deg, #00ff88, #0088ff);
+            color: #000;
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .section-header h2 {
+            font-family: 'Audiowide', cursive;
+            font-size: 2rem;
+            color: #00ff88;
+            margin-bottom: 0.5rem;
+        }
+        
+        .section-description {
+            color: #aaa;
+            font-size: 1rem;
+            margin: 0;
+        }
+        
         /* Meme Grid */
         .memes-section h2 {
             font-family: 'Audiowide', cursive;
@@ -443,6 +505,16 @@
             .stats-section {
                 grid-template-columns: repeat(2, 1fr);
             }
+            
+            .tab-navigation {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .tab-btn {
+                font-size: 0.8rem;
+                padding: 10px 16px;
+            }
         }
     </style>
 </head>
@@ -493,9 +565,36 @@
         
         <!-- Memes Section -->
         <section class="memes-section">
-            <h2>🏆 Meme Leaderboard</h2>
-            <div id="memesGrid" class="memes-grid">
-                <div class="loading"></div>
+            <!-- Tab Navigation -->
+            <div class="tab-navigation">
+                <button class="tab-btn active" id="approvedTab" onclick="switchTab('approved')">
+                    🏆 Approved Leaderboard
+                </button>
+                <button class="tab-btn" id="pendingTab" onclick="switchTab('pending')">
+                    ⏳ Pending Approval
+                </button>
+            </div>
+            
+            <!-- Approved Memes -->
+            <div id="approvedSection" class="tab-content active">
+                <div class="section-header">
+                    <h2>🏆 Approved Meme Leaderboard</h2>
+                    <p class="section-description">Community approved memes ranked by popularity</p>
+                </div>
+                <div id="approvedMemesGrid" class="memes-grid">
+                    <div class="loading"></div>
+                </div>
+            </div>
+            
+            <!-- Pending Memes -->
+            <div id="pendingSection" class="tab-content">
+                <div class="section-header">
+                    <h2>⏳ Pending Approval</h2>
+                    <p class="section-description">Help decide which memes get approved by voting!</p>
+                </div>
+                <div id="pendingMemesGrid" class="memes-grid">
+                    <div class="loading"></div>
+                </div>
             </div>
         </section>
     </div>
@@ -868,100 +967,36 @@
             }
         }
         
-        // Load Memes
+        // Load Memes with Separate Sections
         async function loadMemes() {
             try {
                 const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
                 const memes = await readContract.getTopMemes(50);
                 
-                const memesGrid = document.getElementById('memesGrid');
+                // Separate approved and pending memes
+                const approvedMemes = memes.filter(meme => meme.approved);
+                const pendingMemes = memes.filter(meme => !meme.approved);
                 
-                if (memes.length === 0) {
-                    memesGrid.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #aaa;">
-                            No memes uploaded yet. Be the first to upload!
-                        </div>
-                    `;
-                    return;
-                }
+                // Sort approved memes by likes (descending) for leaderboard
+                const sortedApprovedMemes = [...approvedMemes].sort((a, b) => 
+                    parseInt(b.likes.toString()) - parseInt(a.likes.toString())
+                );
                 
-                // Sort memes by likes (descending) to show leaderboard ranking
-                const sortedMemes = [...memes].sort((a, b) => parseInt(b.likes.toString()) - parseInt(a.likes.toString()));
+                // Sort pending memes by likes (descending) as well
+                const sortedPendingMemes = [...pendingMemes].sort((a, b) => 
+                    parseInt(b.likes.toString()) - parseInt(a.likes.toString())
+                );
                 
-                memesGrid.innerHTML = sortedMemes.map((meme, index) => {
-                    const isApproved = meme.approved;
-                    const twitterId = extractTwitterId(meme.twitterLink);
-                    const rank = index + 1;
-                    
-                    // Determine rank styling
-                    let rankClass = '';
-                    let rankEmoji = '';
-                    if (rank === 1) {
-                        rankClass = 'rank-gold';
-                        rankEmoji = '🥇';
-                    } else if (rank === 2) {
-                        rankClass = 'rank-silver';
-                        rankEmoji = '🥈';
-                    } else if (rank === 3) {
-                        rankClass = 'rank-bronze';
-                        rankEmoji = '🥉';
-                    } else {
-                        rankEmoji = `#${rank}`;
-                    }
-                    
-                    return `
-                        <div class="meme-card ${isApproved ? 'approved' : ''} ${rankClass}">
-                            <div class="meme-header">
-                                <div class="rank-badge ${rankClass}">
-                                    ${rankEmoji} ${rank <= 3 ? '' : 'Rank'}
-                                </div>
-                                <div class="meme-id">Meme #${meme.id}</div>
-                                <div class="approval-badge ${isApproved ? 'approved-badge' : 'pending-badge'}">
-                                    ${isApproved ? '✅ Approved' : '⏳ Pending'}
-                                </div>
-                            </div>
-                            
-                            <a href="${meme.twitterLink}" target="_blank" class="twitter-link">
-                                ${meme.twitterLink}
-                            </a>
-                            
-                            ${twitterId ? `
-                                <div style="margin: 1rem 0;">
-                                    <iframe
-                                        src="https://platform.twitter.com/embed/Tweet.html?id=${twitterId}"
-                                        width="100%"
-                                        height="400"
-                                        frameborder="0"
-                                        scrolling="no"
-                                        style="border-radius: 10px; background: #000;">
-                                    </iframe>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="meme-footer">
-                                <div class="uploader">
-                                    By: ${meme.uploader.slice(0, 6)}...${meme.uploader.slice(-4)}
-                                </div>
-                                <div class="like-section">
-                                    ${signer ? `
-                                        <button 
-                                            class="like-btn" 
-                                            data-meme-id="${meme.id}"
-                                            onclick="likeMeme(${meme.id})"
-                                        >
-                                            👍 Like
-                                        </button>
-                                    ` : ''}
-                                    <span class="likes-count">${meme.likes} likes</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                // Render approved memes
+                renderMemesSection('approvedMemesGrid', sortedApprovedMemes, true);
+                
+                // Render pending memes  
+                renderMemesSection('pendingMemesGrid', sortedPendingMemes, false);
                 
                 // Check which memes user has already liked
                 if (signer && userAddress) {
-                    for (const meme of sortedMemes) {
+                    const allMemes = [...sortedApprovedMemes, ...sortedPendingMemes];
+                    for (const meme of allMemes) {
                         try {
                             const hasLiked = await readContract.liked(meme.id, userAddress);
                             if (hasLiked) {
@@ -979,12 +1014,119 @@
                 
             } catch (error) {
                 console.error('Failed to load memes:', error);
-                document.getElementById('memesGrid').innerHTML = `
+                document.getElementById('approvedMemesGrid').innerHTML = `
                     <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #ff0000;">
                         Failed to load memes. Please try refreshing the page.
                     </div>
                 `;
             }
+        }
+        
+        // Render Memes Section
+        function renderMemesSection(containerId, memes, isApproved) {
+            const container = document.getElementById(containerId);
+            
+            if (memes.length === 0) {
+                const emptyMessage = isApproved 
+                    ? "No approved memes yet. Vote on pending memes to get them approved!"
+                    : "No pending memes. Upload the first meme to get started!";
+                    
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #aaa;">
+                        ${emptyMessage}
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = memes.map((meme, index) => {
+                const twitterId = extractTwitterId(meme.twitterLink);
+                const rank = index + 1;
+                
+                // Determine rank styling (only for approved memes)
+                let rankClass = '';
+                let rankEmoji = '';
+                let rankBadge = '';
+                
+                if (isApproved) {
+                    if (rank === 1) {
+                        rankClass = 'rank-gold';
+                        rankEmoji = '🥇';
+                    } else if (rank === 2) {
+                        rankClass = 'rank-silver';
+                        rankEmoji = '🥈';
+                    } else if (rank === 3) {
+                        rankClass = 'rank-bronze';
+                        rankEmoji = '🥉';
+                    } else {
+                        rankEmoji = `#${rank}`;
+                    }
+                    
+                    rankBadge = `
+                        <div class="rank-badge ${rankClass}">
+                            ${rankEmoji} ${rank <= 3 ? '' : 'Rank'}
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="meme-card ${isApproved ? 'approved' : ''} ${rankClass}">
+                        <div class="meme-header">
+                            ${rankBadge}
+                            <div class="meme-id">Meme #${meme.id}</div>
+                            <div class="approval-badge ${isApproved ? 'approved-badge' : 'pending-badge'}">
+                                ${isApproved ? '✅ Approved' : `⏳ ${meme.likes}/${document.getElementById('approvalThreshold').textContent} votes`}
+                            </div>
+                        </div>
+                        
+                        <a href="${meme.twitterLink}" target="_blank" class="twitter-link">
+                            ${meme.twitterLink}
+                        </a>
+                        
+                        ${twitterId ? `
+                            <div style="margin: 1rem 0;">
+                                <iframe
+                                    src="https://platform.twitter.com/embed/Tweet.html?id=${twitterId}"
+                                    width="100%"
+                                    height="400"
+                                    frameborder="0"
+                                    scrolling="no"
+                                    style="border-radius: 10px; background: #000;">
+                                </iframe>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="meme-footer">
+                            <div class="uploader">
+                                By: ${meme.uploader.slice(0, 6)}...${meme.uploader.slice(-4)}
+                            </div>
+                            <div class="like-section">
+                                ${signer ? `
+                                    <button 
+                                        class="like-btn" 
+                                        data-meme-id="${meme.id}"
+                                        onclick="likeMeme(${meme.id})"
+                                    >
+                                        👍 ${isApproved ? 'Like' : 'Vote'}
+                                    </button>
+                                ` : ''}
+                                <span class="likes-count">${meme.likes} ${isApproved ? 'likes' : 'votes'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Switch Tab Function
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            document.getElementById(tabName + 'Section').classList.add('active');
         }
         
         // Update Stats
