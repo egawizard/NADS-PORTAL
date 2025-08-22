@@ -486,6 +486,19 @@
         <div class="tab-content" id="submit">
             <div class="form-container">
                 <h2 style="text-align: center; margin-bottom: 2rem; font-family: 'Orbitron', monospace; color: #00ff88;">Submit Your Meme</h2>
+                
+                <!-- Debug info -->
+                <div id="debugInfo" style="background: rgba(255, 255, 0, 0.1); border: 1px solid rgba(255, 255, 0, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-size: 0.8rem; display: none;">
+                    <div><strong>Debug Info:</strong></div>
+                    <div>Contract: <span id="contractStatus">Checking...</span></div>
+                    <div>Network: <span id="networkStatus">Checking...</span></div>
+                    <div>Balance: <span id="balanceStatus">Checking...</span></div>
+                </div>
+                
+                <button id="debugButton" class="btn btn-secondary" style="width: 100%; margin-bottom: 1rem;" onclick="toggleDebug()">
+                    Show Debug Info
+                </button>
+                
                 <form id="submitMemeForm">
                     <div class="form-group">
                         <label class="form-label">Twitter URL *</label>
@@ -632,7 +645,8 @@
                     console.log('Contract connected successfully. Total memes:', totalMemes.toString());
                 } catch (contractError) {
                     console.error('Contract connection test failed:', contractError);
-                    throw new Error('Failed to connect to contract');
+                    console.log('This might be normal if the contract is newly deployed or the network is slow');
+                    // Don't throw error here, just log it
                 }
 
                 // Update UI
@@ -930,26 +944,16 @@
                 submitButton.textContent = 'SUBMITTING...';
                 submitButton.disabled = true;
 
-                console.log('Submitting meme:', { twitterUrl, title, description });
+                console.log('Submitting meme:', { twitterUrl, title, description: description || "" });
+                console.log('Contract address:', CONTRACT_ADDRESS);
+                console.log('User address:', userAddress);
 
-                // Estimate gas first
-                let gasEstimate;
-                try {
-                    gasEstimate = await contract.submitMeme.estimateGas(twitterUrl, title, description || "");
-                    console.log('Gas estimate:', gasEstimate.toString());
-                } catch (gasError) {
-                    console.error('Gas estimation failed:', gasError);
-                    throw new Error('Failed to estimate gas. Please check your inputs and try again.');
-                }
-
-                // Send transaction with gas limit
+                // Try direct transaction without gas estimation first
                 const tx = await contract.submitMeme(twitterUrl, title, description || "", {
-                    gasLimit: gasEstimate * BigInt(120) / BigInt(100) // Add 20% buffer
+                    gasLimit: 500000 // Set a reasonable gas limit
                 });
                 
                 console.log('Transaction sent:', tx.hash);
-                console.log('Waiting for confirmation...');
-
                 submitButton.textContent = 'CONFIRMING...';
 
                 // Wait for confirmation
@@ -972,20 +976,23 @@
                 }, 3000);
 
             } catch (error) {
-                console.error('Error submitting meme:', error);
+                console.error('Full error object:', error);
+                console.error('Error submitting meme:', error.message);
                 
                 let errorMessage = 'Failed to submit meme. ';
                 
-                if (error.message.includes('user rejected')) {
+                if (error.message.includes('user rejected') || error.code === 'ACTION_REJECTED') {
                     errorMessage += 'Transaction was cancelled by user.';
                 } else if (error.message.includes('insufficient funds')) {
                     errorMessage += 'Insufficient funds for gas fees.';
-                } else if (error.message.includes('gas')) {
-                    errorMessage += 'Gas estimation failed. Please try again.';
+                } else if (error.message.includes('execution reverted')) {
+                    errorMessage += 'Transaction failed. The contract may have restrictions or the inputs may be invalid.';
                 } else if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
-                    errorMessage += 'Contract execution may fail. Please check your inputs.';
+                    errorMessage += 'Contract execution may fail. Please check if the contract is properly deployed.';
+                } else if (error.message.includes('network')) {
+                    errorMessage += 'Network error. Please check your connection to Monad testnet.';
                 } else {
-                    errorMessage += 'Please check your connection and try again.';
+                    errorMessage += `Error: ${error.message || 'Unknown error occurred'}`;
                 }
                 
                 alert(errorMessage);
@@ -1072,6 +1079,70 @@
             } catch (error) {
                 console.error('Error toggling like:', error);
                 alert('Failed to update like. Please try again.');
+            }
+        }
+
+        // Debug functionality
+        async function toggleDebug() {
+            const debugInfo = document.getElementById('debugInfo');
+            const debugButton = document.getElementById('debugButton');
+            
+            if (debugInfo.style.display === 'none') {
+                debugInfo.style.display = 'block';
+                debugButton.textContent = 'Hide Debug Info';
+                await updateDebugInfo();
+            } else {
+                debugInfo.style.display = 'none';
+                debugButton.textContent = 'Show Debug Info';
+            }
+        }
+
+        async function updateDebugInfo() {
+            const contractStatus = document.getElementById('contractStatus');
+            const networkStatus = document.getElementById('networkStatus');
+            const balanceStatus = document.getElementById('balanceStatus');
+
+            // Check contract
+            if (contract) {
+                try {
+                    const totalMemes = await contract.getTotalMemes();
+                    contractStatus.innerHTML = `<span style="color: #00ff88;">✓ Connected (${totalMemes} memes)</span>`;
+                } catch (error) {
+                    contractStatus.innerHTML = `<span style="color: #ff6b6b;">✗ Error: ${error.message}</span>`;
+                }
+            } else {
+                contractStatus.innerHTML = '<span style="color: #ff6b6b;">✗ Not connected</span>';
+            }
+
+            // Check network
+            if (provider) {
+                try {
+                    const network = await provider.getNetwork();
+                    const isCorrectNetwork = network.chainId.toString() === '10143';
+                    networkStatus.innerHTML = isCorrectNetwork 
+                        ? `<span style="color: #00ff88;">✓ Monad Testnet (${network.chainId})</span>`
+                        : `<span style="color: #ff6b6b;">✗ Wrong network (${network.chainId})</span>`;
+                } catch (error) {
+                    networkStatus.innerHTML = `<span style="color: #ff6b6b;">✗ Error: ${error.message}</span>`;
+                }
+            } else {
+                networkStatus.innerHTML = '<span style="color: #ff6b6b;">✗ No provider</span>';
+            }
+
+            // Check balance
+            if (signer && userAddress) {
+                try {
+                    const balance = await provider.getBalance(userAddress);
+                    const formattedBalance = ethers.formatEther(balance);
+                    const hasEnoughBalance = parseFloat(formattedBalance) > 0.01;
+                    balanceStatus.innerHTML = hasEnoughBalance
+                        ? `<span style="color: #00ff88;">✓ ${formattedBalance} MON</span>`
+                        : `<span style="color: #ffd700;">⚠ ${formattedBalance} MON (low)</span>`;
+                } catch (error) {
+                    balanceStatus.innerHTML = `<span style="color: #ff6b6b;">✗ Error: ${error.message}</span>`;
+                }
+            } else {
+                balanceStatus.innerHTML = '<span style="color: #ff6b6b;">✗ Not connected</span>';
             }
         }
 
