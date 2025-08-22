@@ -3,1377 +3,1017 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NADS PORTAL - Decentralized Meme Portal</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
+    <title>NADS PORTAL - Decentralized Meme Platform</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
         
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Rajdhani', sans-serif;
             background: #000;
             color: #fff;
             overflow-x: hidden;
             min-height: 100vh;
         }
-        
-        .animated-bg {
+
+        /* Animated Background */
+        .bg-animation {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, #000, #111, #000, #222);
-            background-size: 400% 400%;
-            animation: gradientShift 10s ease infinite;
             z-index: -2;
+            background: linear-gradient(45deg, #000 0%, #111 25%, #000 50%, #222 75%, #000 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
         }
-        
-        .animated-bg::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%);
-            animation: pulseGradient 8s ease-in-out infinite alternate;
-        }
-        
-        .floating-particles {
+
+        .bg-particles {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
             z-index: -1;
+            opacity: 0.1;
         }
-        
+
         .particle {
             position: absolute;
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.5);
+            width: 2px;
+            height: 2px;
+            background: #00ff88;
             border-radius: 50%;
-            animation: float 6s infinite linear;
+            animation: float 20s infinite linear;
         }
-        
+
         @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
+            0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
         }
-        
-        @keyframes pulseGradient {
-            0% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
+
         @keyframes float {
-            0% {
-                transform: translateY(100vh) rotate(0deg);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            90% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(-100px) rotate(360deg);
-                opacity: 0;
-            }
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        header {
-            padding: 20px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            background: rgba(0, 0, 0, 0.5);
-            position: sticky;
+
+        /* Navigation */
+        nav {
+            position: fixed;
             top: 0;
-            z-index: 100;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
         }
-        
-        .header-content {
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
         }
-        
+
         .logo {
             font-family: 'Orbitron', monospace;
             font-size: 2rem;
             font-weight: 900;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
-            background-size: 300% 300%;
+            background: linear-gradient(45deg, #00ff88, #00ccff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: gradientShift 3s ease infinite;
-            text-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
         }
-        
-        .wallet-section {
+
+        .nav-buttons {
             display: flex;
+            gap: 1rem;
             align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
         }
-        
-        .wallet-address {
-            font-family: 'Orbitron', monospace;
-            font-size: 0.9rem;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 8px 15px;
-            border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
+
         .btn {
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            padding: 0.75rem 1.5rem;
             border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
-            color: white;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
             font-weight: 600;
+            font-size: 1rem;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-family: 'Space Grotesk', sans-serif;
             text-transform: uppercase;
             letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
         }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
         }
-        
-        .btn:hover::before {
-            left: 100%;
-        }
-        
-        .btn:hover {
+
+        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3);
+            box-shadow: 0 5px 30px rgba(0, 255, 136, 0.5);
         }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+
+        .btn-secondary {
+            background: transparent;
+            color: #00ff88;
+            border: 2px solid #00ff88;
         }
-        
-        .main-content {
-            padding: 40px 0;
+
+        .btn-secondary:hover {
+            background: rgba(0, 255, 136, 0.1);
+            transform: translateY(-2px);
         }
-        
-        .hero {
-            text-align: center;
-            padding: 60px 0;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 20px;
-            margin-bottom: 40px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 100px 2rem 2rem;
         }
-        
-        .hero h1 {
-            font-family: 'Orbitron', monospace;
-            font-size: 3rem;
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 50px rgba(255, 107, 107, 0.3);
-        }
-        
-        .hero p {
-            font-size: 1.2rem;
-            color: rgba(255, 255, 255, 0.8);
-            max-width: 600px;
-            margin: 0 auto 30px;
-            line-height: 1.6;
-        }
-        
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-family: 'Orbitron', monospace;
-            font-size: 2rem;
-            font-weight: 700;
-            color: #4ecdc4;
-        }
-        
-        .stat-label {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
+
+        /* Tabs */
         .tabs {
             display: flex;
+            gap: 2rem;
+            margin-bottom: 3rem;
             justify-content: center;
-            gap: 10px;
-            margin-bottom: 40px;
             flex-wrap: wrap;
         }
-        
+
         .tab {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 15px 30px;
-            border-radius: 25px;
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
-            color: rgba(255, 255, 255, 0.7);
-            font-weight: 500;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
+
         .tab.active {
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.2);
+            background: linear-gradient(45deg, rgba(0, 255, 136, 0.2), rgba(0, 204, 255, 0.2));
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
         }
-        
+
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.2);
+        }
+
+        /* Tab Content */
         .tab-content {
             display: none;
         }
-        
+
         .tab-content.active {
             display: block;
         }
-        
-        .submit-form {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .form-group {
-            margin-bottom: 25px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #4ecdc4;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.9rem;
-        }
-        
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 15px;
-            border-radius: 10px;
-            color: white;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #4ecdc4;
-            box-shadow: 0 0 15px rgba(78, 205, 196, 0.3);
-        }
-        
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-        
-        .memes-grid {
+
+        /* Meme Grid */
+        .meme-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 30px;
-            margin-top: 40px;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
         }
-        
+
         .meme-card {
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            position: relative;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 16px;
             overflow: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
         }
-        
-        .meme-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-        
-        .meme-card:hover::before {
-            transform: scaleX(1);
-        }
-        
+
         .meme-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(255, 107, 107, 0.2);
+            border-color: #00ff88;
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2);
         }
-        
-        .meme-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
+
+        .meme-content {
+            padding: 1.5rem;
         }
-        
+
         .meme-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             font-weight: 700;
-            color: #4ecdc4;
-            flex: 1;
+            margin-bottom: 0.5rem;
+            color: #00ff88;
         }
-        
-        .meme-status {
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .status-pending {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-            border: 1px solid rgba(255, 193, 7, 0.3);
-        }
-        
-        .status-approved {
-            background: rgba(40, 167, 69, 0.2);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.3);
-        }
-        
-        .status-rejected {
-            background: rgba(220, 53, 69, 0.2);
-            color: #dc3545;
-            border: 1px solid rgba(220, 53, 69, 0.3);
-        }
-        
+
         .meme-description {
             color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 15px;
+            margin-bottom: 1rem;
             line-height: 1.5;
         }
-        
+
         .meme-author {
             font-size: 0.9rem;
             color: rgba(255, 255, 255, 0.6);
-            margin-bottom: 15px;
-            font-family: 'Orbitron', monospace;
+            margin-bottom: 1rem;
         }
-        
+
         .meme-stats {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
+            margin-bottom: 1rem;
         }
-        
-        .stat-group {
-            display: flex;
-            gap: 15px;
-        }
-        
+
         .stat {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .meme-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .btn-small {
-            padding: 8px 15px;
-            font-size: 0.8rem;
-            border-radius: 20px;
-            flex: 1;
-            min-width: 80px;
-        }
-        
-        .btn-approve {
-            background: linear-gradient(45deg, #28a745, #20c997);
-        }
-        
-        .btn-reject {
-            background: linear-gradient(45deg, #dc3545, #fd7e14);
-        }
-        
-        .btn-like {
-            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-        }
-        
-        .btn-unlike {
-            background: linear-gradient(45deg, #6c757d, #95a5a6);
-        }
-        
-        .twitter-link {
-            color: #4ecdc4;
-            text-decoration: none;
+            gap: 0.5rem;
             font-weight: 600;
-            transition: color 0.3s ease;
         }
-        
-        .twitter-link:hover {
+
+        .like-btn {
+            background: none;
+            border: none;
             color: #ff6b6b;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
         }
-        
+
+        .like-btn:hover {
+            background: rgba(255, 107, 107, 0.1);
+            transform: scale(1.1);
+        }
+
+        .like-btn.liked {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+        }
+
+        /* Forms */
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #00ff88;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Leaderboard */
         .leaderboard {
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            padding: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 136, 0.2);
         }
-        
+
+        .leaderboard-header {
+            background: linear-gradient(45deg, rgba(0, 255, 136, 0.2), rgba(0, 204, 255, 0.2));
+            padding: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
         .leaderboard-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
+            padding: 1rem 1.5rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
         }
-        
-        .leaderboard-item:last-child {
-            border-bottom: none;
+
+        .leaderboard-item:hover {
+            background: rgba(0, 255, 136, 0.1);
         }
-        
-        .user-rank {
-            font-family: 'Orbitron', monospace;
-            font-size: 1.2rem;
+
+        .leaderboard-rank {
+            font-size: 1.5rem;
             font-weight: 700;
-            color: #4ecdc4;
-            width: 40px;
+            color: #00ff88;
+            width: 50px;
         }
-        
-        .user-address {
-            font-family: 'Orbitron', monospace;
+
+        .leaderboard-user {
             flex: 1;
-            margin: 0 20px;
+            margin-left: 1rem;
         }
-        
-        .user-score {
+
+        .leaderboard-score {
+            font-size: 1.2rem;
             font-weight: 600;
+            color: #00ccff;
+        }
+
+        /* Status indicators */
+        .status-pending {
+            color: #ffd700;
+        }
+
+        .status-approved {
+            color: #00ff88;
+        }
+
+        .status-rejected {
             color: #ff6b6b;
         }
-        
-        .loading {
+
+        /* Wallet info */
+        .wallet-info {
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 40px;
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.7);
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
         }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #4ecdc4;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 15px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .error, .success {
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-        
-        .error {
-            background: rgba(220, 53, 69, 0.2);
-            color: #dc3545;
-            border: 1px solid rgba(220, 53, 69, 0.3);
-        }
-        
-        .success {
-            background: rgba(40, 167, 69, 0.2);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.3);
-        }
-        
-        footer {
+
+        /* Loading states */
+        .loading {
             text-align: center;
-            padding: 40px 0;
-            margin-top: 80px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
             color: rgba(255, 255, 255, 0.6);
         }
-        
-        .credit {
-            margin-top: 10px;
-        }
-        
-        .credit a {
-            color: #4ecdc4;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-        
-        .credit a:hover {
-            color: #ff6b6b;
-        }
-        
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2rem;
+            .nav-container {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
             }
-            
-            .stats {
-                gap: 20px;
-            }
-            
-            .memes-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .submit-form {
-                padding: 25px;
-            }
-            
+
             .tabs {
                 flex-direction: column;
                 align-items: center;
             }
-            
-            .tab {
-                width: 200px;
-                text-align: center;
+
+            .meme-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
+
+            .container {
+                padding: 120px 1rem 1rem;
+            }
+        }
+
+        /* Credits */
+        .credits {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            z-index: 1000;
+        }
+
+        .credits a {
+            color: #00ff88;
+            text-decoration: none;
+        }
+
+        .credits a:hover {
+            text-decoration: underline;
+        }
+
+        /* Twitter embed iframe styling */
+        .twitter-container {
+            margin: 1rem 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        iframe {
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
         }
     </style>
 </head>
 <body>
-    <div class="animated-bg"></div>
-    <div class="floating-particles" id="particles"></div>
-    
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">NADS PORTAL</div>
-                <div class="wallet-section">
-                    <div id="walletAddress" class="wallet-address" style="display: none;"></div>
-                    <button id="connectWallet" class="btn">Connect Wallet</button>
+    <div class="bg-animation"></div>
+    <div class="bg-particles" id="particles"></div>
+
+    <nav>
+        <div class="nav-container">
+            <div class="logo">NADS PORTAL</div>
+            <div class="nav-buttons">
+                <div class="wallet-info" id="walletInfo">
+                    <span>Not Connected</span>
+                </div>
+                <button class="btn btn-primary" id="connectWallet">Connect Wallet</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="approved">🔥 Approved Memes</div>
+            <div class="tab" data-tab="pending">⏳ Pending Approval</div>
+            <div class="tab" data-tab="submit">📤 Submit Meme</div>
+            <div class="tab" data-tab="leaderboard">🏆 Leaderboard</div>
+        </div>
+
+        <!-- Approved Memes Tab -->
+        <div class="tab-content active" id="approved">
+            <div class="meme-grid" id="approvedMemes">
+                <div class="loading">Loading approved memes...</div>
+            </div>
+        </div>
+
+        <!-- Pending Memes Tab -->
+        <div class="tab-content" id="pending">
+            <div class="meme-grid" id="pendingMemes">
+                <div class="loading">Loading pending memes...</div>
+            </div>
+        </div>
+
+        <!-- Submit Meme Tab -->
+        <div class="tab-content" id="submit">
+            <div class="form-container">
+                <h2 style="text-align: center; margin-bottom: 2rem; font-family: 'Orbitron', monospace; color: #00ff88;">Submit Your Meme</h2>
+                <form id="submitMemeForm">
+                    <div class="form-group">
+                        <label class="form-label">Twitter URL *</label>
+                        <input type="url" class="form-input" id="twitterUrl" placeholder="https://twitter.com/username/status/..." required>
+                        <small style="color: rgba(255, 255, 255, 0.6); font-size: 0.8rem;">Paste the Twitter URL of your meme</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Title *</label>
+                        <input type="text" class="form-input" id="memeTitle" placeholder="Enter meme title" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-input" id="memeDescription" rows="4" placeholder="Describe your meme (optional)"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Meme</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Leaderboard Tab -->
+        <div class="tab-content" id="leaderboard">
+            <div class="leaderboard">
+                <div class="leaderboard-header">Top Meme Creators</div>
+                <div id="leaderboardContent">
+                    <div class="loading">Loading leaderboard...</div>
                 </div>
             </div>
         </div>
-    </header>
+    </div>
 
-    <main class="main-content">
-        <div class="container">
-            <section class="hero">
-                <h1>Decentralized Meme Portal</h1>
-                <p>Submit, vote, and discover the best memes on Monad blockchain. Community-driven approval system with no central database - everything is on-chain!</p>
-                <div class="stats">
-                    <div class="stat-item">
-                        <div class="stat-number" id="totalMemes">0</div>
-                        <div class="stat-label">Total Memes</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="approvedMemes">0</div>
-                        <div class="stat-label">Approved</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number" id="pendingMemes">0</div>
-                        <div class="stat-label">Pending</div>
-                    </div>
-                </div>
-            </section>
+    <div class="credits">
+        Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a>
+    </div>
 
-            <div class="tabs">
-                <div class="tab active" data-tab="approved">Approved Memes</div>
-                <div class="tab" data-tab="pending">Pending Votes</div>
-                <div class="tab" data-tab="submit">Submit Meme</div>
-                <div class="tab" data-tab="leaderboard">Leaderboard</div>
-            </div>
-
-            <div id="approved" class="tab-content active">
-                <div id="approvedMemesGrid" class="memes-grid">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading approved memes...
-                    </div>
-                </div>
-            </div>
-
-            <div id="pending" class="tab-content">
-                <div id="pendingMemesGrid" class="memes-grid">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Loading pending memes...
-                    </div>
-                </div>
-            </div>
-
-            <div id="submit" class="tab-content">
-                <div class="submit-form">
-                    <h2 style="margin-bottom: 30px; color: #4ecdc4; font-family: 'Orbitron', monospace;">Submit Your Meme</h2>
-                    <form id="submitForm">
-                        <div class="form-group">
-                            <label for="twitterUrl">Twitter/X URL</label>
-                            <input type="url" id="twitterUrl" placeholder="https://twitter.com/username/status/..." required>
-                        </div>
-                        <div class="form-group">
-                            <label for="title">Title</label>
-                            <input type="text" id="title" placeholder="Give your meme a catchy title" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="description">Description</label>
-                            <textarea id="description" placeholder="Describe your meme or add context" required></textarea>
-                        </div>
-                        <button type="submit" class="btn" id="submitBtn">Submit Meme</button>
-                    </form>
-                </div>
-            </div>
-
-            <div id="leaderboard" class="tab-content">
-                <div class="leaderboard">
-                    <h2 style="margin-bottom: 30px; color: #4ecdc4; font-family: 'Orbitron', monospace;">Top Meme Creators</h2>
-                    <div id="leaderboardList">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            Loading leaderboard...
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2025 NADS PORTAL - Decentralized Meme Portal on Monad</p>
-            <div class="credit">
-                Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a>
-            </div>
-        </div>
-    </footer>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
     <script>
-        // Constants
-        const CONTRACT_ADDRESS = '0x75d161eACE65EB2e0F01fE49c6902Bd5f0cfDa78';
-        const MONAD_CHAIN_ID = '0x279F'; // 10143 in hex
-        const MONAD_RPC = 'https://testnet-rpc.monad.xyz';
-        const ABI = [{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"approveMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"likeMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalApprovals","type":"uint256"}],"name":"MemeApproved","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalLikes","type":"uint256"}],"name":"MemeLiked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalRejections","type":"uint256"}],"name":"MemeRejected","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"},{"indexed":false,"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"MemeStatusChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"twitterUrl","type":"string"},{"indexed":false,"internalType":"string","name":"title","type":"string"}],"name":"MemeSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalLikes","type":"uint256"}],"name":"MemeUnliked","type":"event"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"rejectMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"_twitterUrl","type":"string"},{"internalType":"string","name":"_title","type":"string"},{"internalType":"string","name":"_description","type":"string"}],"name":"submitMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"unlikeMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"APPROVAL_THRESHOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"approvedMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getApprovedMemes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"getMeme","outputs":[{"components":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"twitterUrl","type":"string"},{"internalType":"string","name":"title","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"address","name":"author","type":"address"},{"internalType":"uint256","name":"approvals","type":"uint256"},{"internalType":"uint256","name":"rejections","type":"uint256"},{"internalType":"bool","name":"isApproved","type":"bool"},{"internalType":"bool","name":"exists","type":"bool"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"uint256","name":"likes","type":"uint256"}],"internalType":"struct NADSPortal.Meme","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bool","name":"_approved","type":"bool"},{"internalType":"uint256","name":"_offset","type":"uint256"},{"internalType":"uint256","name":"_limit","type":"uint256"}],"name":"getMemesByStatus","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getPendingMemes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getRejectedMemes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTotalMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getUserStats","outputs":[{"internalType":"uint256","name":"memeCount","type":"uint256"},{"internalType":"uint256","name":"totalLikes","type":"uint256"},{"internalType":"uint256","name":"score","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"},{"internalType":"address","name":"_user","type":"address"}],"name":"getUserVote","outputs":[{"internalType":"bool","name":"hasVoted","type":"bool"},{"internalType":"bool","name":"vote","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"},{"internalType":"address","name":"_user","type":"address"}],"name":"hasUserLiked","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"address","name":"","type":"address"}],"name":"likes","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"memeCounter","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"memes","outputs":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"twitterUrl","type":"string"},{"internalType":"string","name":"title","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"address","name":"author","type":"address"},{"internalType":"uint256","name":"approvals","type":"uint256"},{"internalType":"uint256","name":"rejections","type":"uint256"},{"internalType":"bool","name":"isApproved","type":"bool"},{"internalType":"bool","name":"exists","type":"bool"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"uint256","name":"likes","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"pendingMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"rejectedMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"REJECTION_THRESHOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"userMemeCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"userTotalLikes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"address","name":"","type":"address"}],"name":"votes","outputs":[{"internalType":"bool","name":"hasVoted","type":"bool"},{"internalType":"bool","name":"vote","type":"bool"}],"stateMutability":"view","type":"function"}];
+        // Contract configuration
+        const CONTRACT_ADDRESS = "0x75d161eACE65EB2e0F01fE49c6902Bd5f0cfDa78";
+        const MONAD_CHAIN_ID = "0x2797"; // 10143 in hex
+        const MONAD_RPC = "https://testnet-rpc.monad.xyz";
+        
+        const CONTRACT_ABI = [{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"approveMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"likeMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalApprovals","type":"uint256"}],"name":"MemeApproved","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalLikes","type":"uint256"}],"name":"MemeLiked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalRejections","type":"uint256"}],"name":"MemeRejected","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"},{"indexed":false,"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"MemeStatusChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":false,"internalType":"string","name":"twitterUrl","type":"string"},{"indexed":false,"internalType":"string","name":"title","type":"string"}],"name":"MemeSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"memeId","type":"uint256"},{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"totalLikes","type":"uint256"}],"name":"MemeUnliked","type":"event"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"rejectMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"_twitterUrl","type":"string"},{"internalType":"string","name":"_title","type":"string"},{"internalType":"string","name":"_description","type":"string"}],"name":"submitMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"unlikeMeme","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"APPROVAL_THRESHOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"approvedMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getApprovedMemes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"}],"name":"getMeme","outputs":[{"components":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"twitterUrl","type":"string"},{"internalType":"string","name":"title","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"address","name":"author","type":"address"},{"internalType":"uint256","name":"approvals","type":"uint256"},{"internalType":"uint256","name":"rejections","type":"uint256"},{"internalType":"bool","name":"isApproved","type":"bool"},{"internalType":"bool","name":"exists","type":"bool"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"uint256","name":"likes","type":"uint256"}],"internalType":"struct NADSPortal.Meme","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bool","name":"_approved","type":"bool"},{"internalType":"uint256","name":"_offset","type":"uint256"},{"internalType":"uint256","name":"_limit","type":"uint256"}],"name":"getMemesByStatus","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getPendingMemes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getRejectedMemes","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTotalMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getUserStats","outputs":[{"internalType":"uint256","name":"memeCount","type":"uint256"},{"internalType":"uint256","name":"totalLikes","type":"uint256"},{"internalType":"uint256","name":"score","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"},{"internalType":"address","name":"_user","type":"address"}],"name":"getUserVote","outputs":[{"internalType":"bool","name":"hasVoted","type":"bool"},{"internalType":"bool","name":"vote","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_memeId","type":"uint256"},{"internalType":"address","name":"_user","type":"address"}],"name":"hasUserLiked","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"address","name":"","type":"address"}],"name":"likes","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"memeCounter","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"memes","outputs":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"twitterUrl","type":"string"},{"internalType":"string","name":"title","type":"string"},{"internalType":"string","name":"description","type":"string"},{"internalType":"address","name":"author","type":"address"},{"internalType":"uint256","name":"approvals","type":"uint256"},{"internalType":"uint256","name":"rejections","type":"uint256"},{"internalType":"bool","name":"isApproved","type":"bool"},{"internalType":"bool","name":"exists","type":"bool"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"uint256","name":"likes","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"pendingMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"rejectedMemes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"REJECTION_THRESHOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"userMemeCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"userTotalLikes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"address","name":"","type":"address"}],"name":"votes","outputs":[{"internalType":"bool","name":"hasVoted","type":"bool"},{"internalType":"bool","name":"vote","type":"bool"}],"stateMutability":"view","type":"function"}];
 
-        // Global variables
         let provider = null;
         let signer = null;
         let contract = null;
         let userAddress = null;
-
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeFloatingParticles();
-            setupTabNavigation();
-            setupWalletConnection();
-            loadStats();
-        });
-
-        // Create floating particles animation
-        function initializeFloatingParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 50;
-
-            for (let i = 0; i < particleCount; i++) {
+        
+        // Initialize particles animation
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 6 + 's';
-                particle.style.animationDuration = (6 + Math.random() * 4) + 's';
-                particlesContainer.appendChild(particle);
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                container.appendChild(particle);
             }
         }
 
-        // Setup tab navigation
-        function setupTabNavigation() {
+        // Tab switching functionality
+        function initTabs() {
             const tabs = document.querySelectorAll('.tab');
             const tabContents = document.querySelectorAll('.tab-content');
 
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
-                    const targetTab = tab.dataset.tab;
-
                     // Remove active class from all tabs and contents
                     tabs.forEach(t => t.classList.remove('active'));
                     tabContents.forEach(tc => tc.classList.remove('active'));
 
                     // Add active class to clicked tab and corresponding content
                     tab.classList.add('active');
+                    const targetTab = tab.getAttribute('data-tab');
                     document.getElementById(targetTab).classList.add('active');
 
                     // Load content based on tab
-                    loadTabContent(targetTab);
+                    if (targetTab === 'approved') {
+                        loadApprovedMemes();
+                    } else if (targetTab === 'pending') {
+                        loadPendingMemes();
+                    } else if (targetTab === 'leaderboard') {
+                        loadLeaderboard();
+                    }
                 });
             });
         }
 
-        // Load content for specific tab
-        function loadTabContent(tab) {
-            switch(tab) {
-                case 'approved':
-                    loadApprovedMemes();
-                    break;
-                case 'pending':
-                    loadPendingMemes();
-                    break;
-                case 'leaderboard':
-                    loadLeaderboard();
-                    break;
-            }
-        }
-
-        // Setup wallet connection
-        function setupWalletConnection() {
-            const connectBtn = document.getElementById('connectWallet');
-            const walletAddress = document.getElementById('walletAddress');
-
-            connectBtn.addEventListener('click', connectWallet);
-
-            // Check if already connected
-            if (window.ethereum && window.ethereum.selectedAddress) {
-                connectWallet();
-            }
-        }
-
-        // Connect wallet function
+        // Wallet connection
         async function connectWallet() {
-            try {
-                if (!window.ethereum) {
-                    showError('Please install MetaMask or another Web3 wallet!');
-                    return;
-                }
-
-                // Request account access
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                userAddress = accounts[0];
-
-                // Setup provider and signer
-                provider = new ethers.BrowserProvider(window.ethereum);
-                signer = await provider.getSigner();
-                
-                // Check if on correct network
-                const network = await provider.getNetwork();
-                console.log('Current network:', network);
-                
-                if (network.chainId.toString() !== '10143') {
-                    await switchToMonadNetwork();
-                    // Refresh provider after network switch
-                    provider = new ethers.BrowserProvider(window.ethereum);
-                    signer = await provider.getSigner();
-                }
-
-                // Setup contract
-                contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-                console.log('Contract initialized:', CONTRACT_ADDRESS);
-
-                // Test contract connection
-                try {
-                    const totalMemes = await contract.getTotalMemes();
-                    console.log('Contract test successful, total memes:', totalMemes.toString());
-                } catch (contractError) {
-                    console.error('Contract test failed:', contractError);
-                    throw new Error('Failed to connect to smart contract. Please check the contract address.');
-                }
-
-                // Update UI
-                document.getElementById('connectWallet').textContent = 'Connected';
-                document.getElementById('connectWallet').disabled = true;
-                document.getElementById('walletAddress').textContent = formatAddress(userAddress);
-                document.getElementById('walletAddress').style.display = 'block';
-
-                // Setup form submission
-                setupFormSubmission();
-
-                showSuccess('Wallet connected successfully! 🎉');
-                
-                // Load content
-                loadStats();
-                loadApprovedMemes();
-
-            } catch (error) {
-                console.error('Error connecting wallet:', error);
-                let errorMessage = 'Failed to connect wallet';
-                
-                if (error.code === 4001) {
-                    errorMessage = 'Connection rejected by user';
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                showError(errorMessage);
-            }
-        }
-
-        // Switch to Monad network
-        async function switchToMonadNetwork() {
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: MONAD_CHAIN_ID }],
-                });
-            } catch (switchError) {
-                if (switchError.code === 4902) {
-                    try {
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [
-                                {
-                                    chainId: MONAD_CHAIN_ID,
-                                    chainName: 'Monad Testnet',
-                                    nativeCurrency: {
-                                        name: 'MON',
-                                        symbol: 'MON',
-                                        decimals: 18,
-                                    },
-                                    rpcUrls: [MONAD_RPC],
-                                    blockExplorerUrls: ['https://testnet-explorer.monad.xyz'],
-                                },
-                            ],
-                        });
-                    } catch (addError) {
-                        throw new Error('Failed to add Monad network');
-                    }
-                } else {
-                    throw switchError;
-                }
-            }
-        }
-
-        // Setup form submission
-        function setupFormSubmission() {
-            const form = document.getElementById('submitForm');
-            form.addEventListener('submit', submitMeme);
-        }
-
-        // Submit meme function
-        async function submitMeme(event) {
-            event.preventDefault();
-            
-            if (!contract) {
-                showError('Please connect your wallet first!');
+            if (typeof window.ethereum === 'undefined') {
+                alert('MetaMask is required to use this application. Please install MetaMask and try again.');
                 return;
             }
 
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.textContent;
-
             try {
-                submitBtn.textContent = 'Submitting...';
-                submitBtn.disabled = true;
-
-                const twitterUrl = document.getElementById('twitterUrl').value.trim();
-                const title = document.getElementById('title').value.trim();
-                const description = document.getElementById('description').value.trim();
-
-                // Validate inputs
-                if (!twitterUrl || !title || !description) {
-                    throw new Error('Please fill in all fields');
-                }
-
-                if (!isValidTwitterUrl(twitterUrl)) {
-                    throw new Error('Please enter a valid Twitter/X URL');
-                }
-
-                if (title.length > 100) {
-                    throw new Error('Title must be less than 100 characters');
-                }
-
-                if (description.length > 500) {
-                    throw new Error('Description must be less than 500 characters');
-                }
-
-                // Estimate gas first
-                submitBtn.textContent = 'Estimating gas...';
+                // Request account access
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 
-                let gasEstimate;
-                try {
-                    gasEstimate = await contract.submitMeme.estimateGas(twitterUrl, title, description);
-                    console.log('Gas estimate:', gasEstimate.toString());
-                } catch (gasError) {
-                    console.error('Gas estimation failed:', gasError);
-                    throw new Error('Transaction would fail. Please check your inputs and try again.');
+                // Check if we're on the correct network
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                if (chainId !== MONAD_CHAIN_ID) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: MONAD_CHAIN_ID }]
+                        });
+                    } catch (switchError) {
+                        if (switchError.code === 4902) {
+                            try {
+                                await window.ethereum.request({
+                                    method: 'wallet_addEthereumChain',
+                                    params: [{
+                                        chainId: MONAD_CHAIN_ID,
+                                        chainName: 'Monad Testnet',
+                                        rpcUrls: [MONAD_RPC],
+                                        nativeCurrency: {
+                                            name: 'MON',
+                                            symbol: 'MON',
+                                            decimals: 18
+                                        }
+                                    }]
+                                });
+                            } catch (addError) {
+                                console.error('Failed to add Monad network:', addError);
+                                return;
+                            }
+                        }
+                    }
                 }
 
-                // Submit to blockchain with explicit gas limit
-                submitBtn.textContent = 'Sending transaction...';
-                const tx = await contract.submitMeme(twitterUrl, title, description, {
-                    gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
-                });
+                // Initialize ethers provider and signer
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                userAddress = accounts[0];
                 
-                showSuccess('Transaction submitted! Hash: ' + tx.hash.substring(0, 10) + '...');
-                
-                submitBtn.textContent = 'Confirming...';
-                const receipt = await tx.wait();
-                
-                if (receipt.status === 1) {
-                    showSuccess('Meme submitted successfully! 🎉');
-                    
-                    // Clear form
-                    document.getElementById('submitForm').reset();
-                    
-                    // Refresh stats and pending memes
-                    setTimeout(() => {
-                        loadStats();
-                        loadPendingMemes();
-                    }, 2000);
-                } else {
-                    throw new Error('Transaction failed');
-                }
+                // Initialize contract
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
+                // Update UI
+                updateWalletInfo();
+                
+                // Load initial content
+                loadApprovedMemes();
+
+                console.log('Wallet connected:', userAddress);
             } catch (error) {
-                console.error('Error submitting meme:', error);
-                
-                let errorMessage = 'Failed to submit meme';
-                
-                if (error.code === 4001) {
-                    errorMessage = 'Transaction cancelled by user';
-                } else if (error.code === -32603) {
-                    errorMessage = 'Transaction failed - please check your inputs';
-                } else if (error.message.includes('insufficient funds')) {
-                    errorMessage = 'Insufficient funds for gas';
-                } else if (error.message.includes('user rejected')) {
-                    errorMessage = 'Transaction rejected by user';
-                } else if (error.reason) {
-                    errorMessage = error.reason;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                showError(errorMessage);
-            } finally {
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
+                console.error('Error connecting wallet:', error);
+                alert('Failed to connect wallet. Please try again.');
             }
         }
 
-        // Load statistics
-        async function loadStats() {
-            try {
-                if (!provider) {
-                    provider = new ethers.JsonRpcProvider(MONAD_RPC);
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-                }
-
-                const totalMemes = await contract.getTotalMemes();
-                const approvedMemes = await contract.getApprovedMemes();
-                const pendingMemes = await contract.getPendingMemes();
-
-                document.getElementById('totalMemes').textContent = totalMemes.toString();
-                document.getElementById('approvedMemes').textContent = approvedMemes.length.toString();
-                document.getElementById('pendingMemes').textContent = pendingMemes.length.toString();
-
-            } catch (error) {
-                console.error('Error loading stats:', error);
+        function updateWalletInfo() {
+            const walletInfo = document.getElementById('walletInfo');
+            const connectButton = document.getElementById('connectWallet');
+            
+            if (userAddress) {
+                walletInfo.innerHTML = `
+                    <span>🟢 ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}</span>
+                `;
+                connectButton.textContent = 'Connected';
+                connectButton.disabled = true;
+                connectButton.style.opacity = '0.7';
             }
         }
 
         // Load approved memes
         async function loadApprovedMemes() {
-            const container = document.getElementById('approvedMemesGrid');
-            
-            try {
-                if (!provider) {
-                    provider = new ethers.JsonRpcProvider(MONAD_RPC);
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-                }
+            const container = document.getElementById('approvedMemes');
+            container.innerHTML = '<div class="loading">Loading approved memes...</div>';
 
+            if (!contract) {
+                container.innerHTML = '<div class="loading">Please connect your wallet to view memes</div>';
+                return;
+            }
+
+            try {
                 const approvedMemeIds = await contract.getApprovedMemes();
-                
+                console.log('Approved meme IDs:', approvedMemeIds);
+
                 if (approvedMemeIds.length === 0) {
-                    container.innerHTML = '<div class="loading">No approved memes yet. Be the first to get approved!</div>';
+                    container.innerHTML = '<div class="loading">No approved memes yet. Be the first to submit one!</div>';
                     return;
                 }
 
-                container.innerHTML = '';
+                const memePromises = approvedMemeIds.map(async (memeId) => {
+                    try {
+                        const meme = await contract.getMeme(memeId);
+                        return { id: memeId, ...meme };
+                    } catch (error) {
+                        console.error(`Error fetching meme ${memeId}:`, error);
+                        return null;
+                    }
+                });
 
-                for (const memeId of approvedMemeIds.reverse()) { // Show newest first
-                    const meme = await contract.getMeme(memeId);
-                    const memeCard = createMemeCard(meme, true);
+                const memes = (await Promise.all(memePromises)).filter(meme => meme !== null);
+                
+                container.innerHTML = '';
+                memes.forEach(meme => {
+                    const memeCard = createMemeCard(meme, 'approved');
                     container.appendChild(memeCard);
-                }
+                });
 
             } catch (error) {
                 console.error('Error loading approved memes:', error);
-                container.innerHTML = '<div class="error">Failed to load approved memes</div>';
+                container.innerHTML = '<div class="loading">Error loading memes. Please try again.</div>';
             }
         }
 
         // Load pending memes
         async function loadPendingMemes() {
-            const container = document.getElementById('pendingMemesGrid');
-            
-            try {
-                if (!provider) {
-                    provider = new ethers.JsonRpcProvider(MONAD_RPC);
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-                }
+            const container = document.getElementById('pendingMemes');
+            container.innerHTML = '<div class="loading">Loading pending memes...</div>';
 
+            if (!contract) {
+                container.innerHTML = '<div class="loading">Please connect your wallet to view memes</div>';
+                return;
+            }
+
+            try {
                 const pendingMemeIds = await contract.getPendingMemes();
-                
+                console.log('Pending meme IDs:', pendingMemeIds);
+
                 if (pendingMemeIds.length === 0) {
-                    container.innerHTML = '<div class="loading">No pending memes to vote on</div>';
+                    container.innerHTML = '<div class="loading">No pending memes at the moment.</div>';
                     return;
                 }
 
-                container.innerHTML = '';
+                const memePromises = pendingMemeIds.map(async (memeId) => {
+                    try {
+                        const meme = await contract.getMeme(memeId);
+                        return { id: memeId, ...meme };
+                    } catch (error) {
+                        console.error(`Error fetching meme ${memeId}:`, error);
+                        return null;
+                    }
+                });
 
-                for (const memeId of pendingMemeIds.reverse()) { // Show newest first
-                    const meme = await contract.getMeme(memeId);
-                    const memeCard = createMemeCard(meme, false);
+                const memes = (await Promise.all(memePromises)).filter(meme => meme !== null);
+                
+                container.innerHTML = '';
+                memes.forEach(meme => {
+                    const memeCard = createMemeCard(meme, 'pending');
                     container.appendChild(memeCard);
-                }
+                });
 
             } catch (error) {
                 console.error('Error loading pending memes:', error);
-                container.innerHTML = '<div class="error">Failed to load pending memes</div>';
+                container.innerHTML = '<div class="loading">Error loading memes. Please try again.</div>';
             }
         }
 
-        // Create meme card
-        function createMemeCard(meme, isApproved) {
+        // Create meme card element
+        function createMemeCard(meme, type) {
             const card = document.createElement('div');
             card.className = 'meme-card';
-
+            
+            const tweetId = extractTweetId(meme.twitterUrl);
+            const twitterEmbed = tweetId ? createTwitterEmbed(tweetId) : '';
+            
             const statusClass = meme.isApproved ? 'status-approved' : 'status-pending';
             const statusText = meme.isApproved ? 'Approved' : 'Pending';
-
+            
             card.innerHTML = `
-                <div class="meme-header">
+                <div class="meme-content">
                     <div class="meme-title">${escapeHtml(meme.title)}</div>
-                    <div class="meme-status ${statusClass}">${statusText}</div>
-                </div>
-                <div class="meme-description">${escapeHtml(meme.description)}</div>
-                <div class="meme-author">By: ${formatAddress(meme.author)}</div>
-                <div class="meme-stats">
-                    <div class="stat-group">
-                        ${isApproved ? 
-                            `<div class="stat">❤️ ${meme.likes.toString()}</div>` :
-                            `<div class="stat">👍 ${meme.approvals.toString()}</div>
-                             <div class="stat">👎 ${meme.rejections.toString()}</div>`
-                        }
+                    <div class="meme-description">${escapeHtml(meme.description) || 'No description provided'}</div>
+                    <div class="meme-author">By: ${formatAddress(meme.author)}</div>
+                    
+                    ${twitterEmbed}
+                    
+                    <div class="meme-stats">
+                        <div class="stat">
+                            <span class="${statusClass}">● ${statusText}</span>
+                        </div>
+                        <div class="stat">
+                            <span>👍 ${meme.approvals.toString()}</span>
+                        </div>
+                        <div class="stat">
+                            <span>👎 ${meme.rejections.toString()}</span>
+                        </div>
+                        <div class="stat">
+                            <button class="like-btn" onclick="toggleLike('${meme.id}')" data-meme-id="${meme.id}">
+                                ❤️ ${meme.likes.toString()}
+                            </button>
+                        </div>
                     </div>
-                    <a href="${meme.twitterUrl}" target="_blank" class="twitter-link">View on X/Twitter</a>
-                </div>
-                <div class="meme-actions" id="actions-${meme.id}">
-                    ${createActionButtons(meme, isApproved)}
+                    
+                    ${type === 'pending' ? `
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="approveMeme('${meme.id}')" style="flex: 1;">
+                                Approve
+                            </button>
+                            <button class="btn btn-secondary" onclick="rejectMeme('${meme.id}')" style="flex: 1;">
+                                Reject
+                            </button>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 1rem;">
+                        <a href="${meme.twitterUrl}" target="_blank" class="btn btn-secondary" style="width: 100%; display: block; text-align: center; text-decoration: none;">
+                            View on Twitter
+                        </a>
+                    </div>
                 </div>
             `;
-
+            
             return card;
         }
 
-        // Create action buttons
-        function createActionButtons(meme, isApproved) {
-            if (!userAddress) {
-                return '<div style="text-align: center; color: rgba(255,255,255,0.6);">Connect wallet to interact</div>';
-            }
-
-            if (isApproved) {
-                return `
-                    <button class="btn btn-small btn-like" onclick="toggleLike(${meme.id})">
-                        ❤️ ${meme.likes.toString()}
-                    </button>
-                `;
-            } else {
-                return `
-                    <button class="btn btn-small btn-approve" onclick="approveMeme(${meme.id})">
-                        👍 Approve
-                    </button>
-                    <button class="btn btn-small btn-reject" onclick="rejectMeme(${meme.id})">
-                        👎 Reject
-                    </button>
-                `;
-            }
+        // Create Twitter embed
+        function createTwitterEmbed(tweetId) {
+            return `
+                <div class="twitter-container">
+                    <blockquote class="twitter-tweet" data-theme="dark">
+                        <a href="https://twitter.com/x/status/${tweetId}"></a>
+                    </blockquote>
+                </div>
+            `;
         }
 
-        // Approve meme
-        async function approveMeme(memeId) {
-            try {
-                if (!contract) {
-                    showError('Please connect your wallet first!');
-                    return;
-                }
-
-                // Disable button during transaction
-                const button = event.target;
-                const originalText = button.textContent;
-                button.disabled = true;
-                button.textContent = 'Approving...';
-
-                // Check if user has already voted
-                const userVote = await contract.getUserVote(memeId, userAddress);
-                if (userVote.hasVoted) {
-                    throw new Error('You have already voted on this meme');
-                }
-
-                const tx = await contract.approveMeme(memeId, {
-                    gasLimit: 100000n // Set reasonable gas limit
-                });
-                showSuccess('Vote submitted! Hash: ' + tx.hash.substring(0, 10) + '...');
-                
-                await tx.wait();
-                showSuccess('Meme approved successfully! 👍');
-
-                // Refresh data
-                setTimeout(() => {
-                    loadStats();
-                    loadPendingMemes();
-                }, 2000);
-                
-            } catch (error) {
-                console.error('Error approving meme:', error);
-                
-                let errorMessage = 'Failed to approve meme';
-                if (error.code === 4001) {
-                    errorMessage = 'Transaction cancelled by user';
-                } else if (error.reason) {
-                    errorMessage = error.reason;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                showError(errorMessage);
-            } finally {
-                // Re-enable button
-                if (event && event.target) {
-                    event.target.disabled = false;
-                    event.target.textContent = originalText;
-                }
-            }
-        }
-
-        // Reject meme
-        async function rejectMeme(memeId) {
-            try {
-                if (!contract) {
-                    showError('Please connect your wallet first!');
-                    return;
-                }
-
-                // Disable button during transaction
-                const button = event.target;
-                const originalText = button.textContent;
-                button.disabled = true;
-                button.textContent = 'Rejecting...';
-
-                // Check if user has already voted
-                const userVote = await contract.getUserVote(memeId, userAddress);
-                if (userVote.hasVoted) {
-                    throw new Error('You have already voted on this meme');
-                }
-
-                const tx = await contract.rejectMeme(memeId, {
-                    gasLimit: 100000n // Set reasonable gas limit
-                });
-                showSuccess('Vote submitted! Hash: ' + tx.hash.substring(0, 10) + '...');
-                
-                await tx.wait();
-                showSuccess('Meme rejected successfully! 👎');
-
-                // Refresh data
-                setTimeout(() => {
-                    loadStats();
-                    loadPendingMemes();
-                }, 2000);
-                
-            } catch (error) {
-                console.error('Error rejecting meme:', error);
-                
-                let errorMessage = 'Failed to reject meme';
-                if (error.code === 4001) {
-                    errorMessage = 'Transaction cancelled by user';
-                } else if (error.reason) {
-                    errorMessage = error.reason;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                showError(errorMessage);
-            } finally {
-                // Re-enable button
-                if (event && event.target) {
-                    event.target.disabled = false;
-                    event.target.textContent = originalText;
-                }
-            }
-        }
-
-        // Toggle like
-        async function toggleLike(memeId) {
-            try {
-                if (!contract) {
-                    showError('Please connect your wallet first!');
-                    return;
-                }
-
-                // Check if user has already liked
-                const hasLiked = await contract.hasUserLiked(memeId, userAddress);
-                
-                const tx = hasLiked ? 
-                    await contract.unlikeMeme(memeId, { gasLimit: 80000n }) : 
-                    await contract.likeMeme(memeId, { gasLimit: 80000n });
-                    
-                showSuccess(`${hasLiked ? 'Unlike' : 'Like'} submitted! Hash: ${tx.hash.substring(0, 10)}...`);
-                
-                await tx.wait();
-                showSuccess(`Meme ${hasLiked ? 'unliked' : 'liked'} successfully! ${hasLiked ? '💔' : '❤️'}`);
-
-                // Refresh approved memes
-                setTimeout(() => {
-                    loadApprovedMemes();
-                }, 2000);
-                
-            } catch (error) {
-                console.error('Error toggling like:', error);
-                
-                let errorMessage = 'Failed to toggle like';
-                if (error.code === 4001) {
-                    errorMessage = 'Transaction cancelled by user';
-                } else if (error.reason) {
-                    errorMessage = error.reason;
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                showError(errorMessage);
-            }
+        // Extract tweet ID from Twitter URL
+        function extractTweetId(url) {
+            const match = url.match(/status\/(\d+)/);
+            return match ? match[1] : null;
         }
 
         // Load leaderboard
         async function loadLeaderboard() {
-            const container = document.getElementById('leaderboardList');
-            
+            const container = document.getElementById('leaderboardContent');
+            container.innerHTML = '<div class="loading">Loading leaderboard...</div>';
+
+            if (!contract) {
+                container.innerHTML = '<div class="loading">Please connect your wallet to view leaderboard</div>';
+                return;
+            }
+
             try {
-                if (!provider) {
-                    provider = new ethers.JsonRpcProvider(MONAD_RPC);
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-                }
-
-                // Get all approved memes to find unique authors
-                const approvedMemeIds = await contract.getApprovedMemes();
-                const authorsMap = new Map();
-
-                for (const memeId of approvedMemeIds) {
-                    const meme = await contract.getMeme(memeId);
-                    if (!authorsMap.has(meme.author)) {
-                        const stats = await contract.getUserStats(meme.author);
-                        authorsMap.set(meme.author, {
-                            address: meme.author,
-                            memeCount: Number(stats.memeCount),
-                            totalLikes: Number(stats.totalLikes),
-                            score: Number(stats.score)
-                        });
+                // Get all unique addresses from meme submissions
+                const totalMemes = await contract.getTotalMemes();
+                const addresses = new Set();
+                
+                for (let i = 1; i <= totalMemes; i++) {
+                    try {
+                        const meme = await contract.getMeme(i);
+                        if (meme.exists) {
+                            addresses.add(meme.author);
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching meme ${i}:`, error);
                     }
                 }
 
-                // Convert to array and sort by score
-                const leaderboard = Array.from(authorsMap.values())
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 10); // Top 10
+                const userStats = await Promise.all(
+                    Array.from(addresses).map(async (address) => {
+                        try {
+                            const stats = await contract.getUserStats(address);
+                            return {
+                                address,
+                                memeCount: Number(stats.memeCount),
+                                totalLikes: Number(stats.totalLikes),
+                                score: Number(stats.score)
+                            };
+                        } catch (error) {
+                            console.error(`Error fetching stats for ${address}:`, error);
+                            return null;
+                        }
+                    })
+                );
 
-                if (leaderboard.length === 0) {
-                    container.innerHTML = '<div class="loading">No data available yet</div>';
+                const validStats = userStats.filter(stat => stat !== null);
+                validStats.sort((a, b) => b.score - a.score);
+
+                container.innerHTML = '';
+                
+                if (validStats.length === 0) {
+                    container.innerHTML = '<div class="loading">No users found yet.</div>';
                     return;
                 }
 
-                container.innerHTML = '';
-
-                leaderboard.forEach((user, index) => {
+                validStats.slice(0, 10).forEach((user, index) => {
                     const item = document.createElement('div');
                     item.className = 'leaderboard-item';
                     item.innerHTML = `
-                        <div class="user-rank">#${index + 1}</div>
-                        <div class="user-address">${formatAddress(user.address)}</div>
-                        <div class="user-score">${user.score} pts</div>
+                        <div class="leaderboard-rank">#${index + 1}</div>
+                        <div class="leaderboard-user">
+                            <div style="font-weight: 600;">${formatAddress(user.address)}</div>
+                            <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.7);">
+                                ${user.memeCount} memes • ${user.totalLikes} likes
+                            </div>
+                        </div>
+                        <div class="leaderboard-score">${user.score}</div>
                     `;
                     container.appendChild(item);
                 });
 
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
-                container.innerHTML = '<div class="error">Failed to load leaderboard</div>';
+                container.innerHTML = '<div class="loading">Error loading leaderboard. Please try again.</div>';
+            }
+        }
+
+        // Submit meme form handler
+        async function handleSubmitMeme(event) {
+            event.preventDefault();
+            
+            if (!contract || !signer) {
+                alert('Please connect your wallet first.');
+                return;
+            }
+
+            const twitterUrl = document.getElementById('twitterUrl').value;
+            const title = document.getElementById('memeTitle').value;
+            const description = document.getElementById('memeDescription').value;
+
+            // Validate Twitter URL
+            if (!isValidTwitterUrl(twitterUrl)) {
+                alert('Please enter a valid Twitter URL.');
+                return;
+            }
+
+            try {
+                const submitButton = event.target.querySelector('button[type="submit"]');
+                submitButton.textContent = 'Submitting...';
+                submitButton.disabled = true;
+
+                const tx = await contract.submitMeme(twitterUrl, title, description);
+                console.log('Transaction sent:', tx.hash);
+
+                // Wait for confirmation
+                await tx.wait();
+                
+                alert('Meme submitted successfully! It will be reviewed by the community.');
+                
+                // Reset form
+                document.getElementById('submitMemeForm').reset();
+                
+                submitButton.textContent = 'Submit Meme';
+                submitButton.disabled = false;
+
+            } catch (error) {
+                console.error('Error submitting meme:', error);
+                alert('Failed to submit meme. Please try again.');
+                
+                const submitButton = event.target.querySelector('button[type="submit"]');
+                submitButton.textContent = 'Submit Meme';
+                submitButton.disabled = false;
+            }
+        }
+
+        // Validate Twitter URL
+        function isValidTwitterUrl(url) {
+            const twitterRegex = /^https:\/\/(twitter\.com|x\.com)\/\w+\/status\/\d+/;
+            return twitterRegex.test(url);
+        }
+
+        // Approve meme
+        async function approveMeme(memeId) {
+            if (!contract || !signer) {
+                alert('Please connect your wallet first.');
+                return;
+            }
+
+            try {
+                const tx = await contract.approveMeme(memeId);
+                console.log('Approval transaction sent:', tx.hash);
+                await tx.wait();
+                alert('Meme approved successfully!');
+                loadPendingMemes(); // Refresh the pending memes
+                loadApprovedMemes(); // Refresh approved memes
+            } catch (error) {
+                console.error('Error approving meme:', error);
+                alert('Failed to approve meme. Please try again.');
+            }
+        }
+
+        // Reject meme
+        async function rejectMeme(memeId) {
+            if (!contract || !signer) {
+                alert('Please connect your wallet first.');
+                return;
+            }
+
+            try {
+                const tx = await contract.rejectMeme(memeId);
+                console.log('Rejection transaction sent:', tx.hash);
+                await tx.wait();
+                alert('Meme rejected.');
+                loadPendingMemes(); // Refresh the pending memes
+            } catch (error) {
+                console.error('Error rejecting meme:', error);
+                alert('Failed to reject meme. Please try again.');
+            }
+        }
+
+        // Toggle like
+        async function toggleLike(memeId) {
+            if (!contract || !signer) {
+                alert('Please connect your wallet first.');
+                return;
+            }
+
+            try {
+                // Check if user has already liked this meme
+                const hasLiked = await contract.hasUserLiked(memeId, userAddress);
+                
+                let tx;
+                if (hasLiked) {
+                    tx = await contract.unlikeMeme(memeId);
+                } else {
+                    tx = await contract.likeMeme(memeId);
+                }
+                
+                console.log('Like transaction sent:', tx.hash);
+                await tx.wait();
+                
+                // Refresh the current view
+                const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
+                if (activeTab === 'approved') {
+                    loadApprovedMemes();
+                } else if (activeTab === 'pending') {
+                    loadPendingMemes();
+                }
+                
+            } catch (error) {
+                console.error('Error toggling like:', error);
+                alert('Failed to update like. Please try again.');
             }
         }
 
@@ -1388,47 +1028,63 @@
             return div.innerHTML;
         }
 
-        function isValidTwitterUrl(url) {
-            const twitterRegex = /^https:\/\/(twitter\.com|x\.com)\/\w+\/status\/\d+/;
-            return twitterRegex.test(url);
-        }
-
-        function showError(message) {
-            const existing = document.querySelector('.error');
-            if (existing) existing.remove();
-
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error';
-            errorDiv.textContent = message;
+        // Initialize the application
+        function init() {
+            createParticles();
+            initTabs();
             
-            const container = document.querySelector('.container');
-            container.insertBefore(errorDiv, container.firstChild);
-
-            setTimeout(() => {
-                errorDiv.remove();
-            }, 5000);
-        }
-
-        function showSuccess(message) {
-            const existing = document.querySelector('.success');
-            if (existing) existing.remove();
-
-            const successDiv = document.createElement('div');
-            successDiv.className = 'success';
-            successDiv.textContent = message;
+            // Event listeners
+            document.getElementById('connectWallet').addEventListener('click', connectWallet);
+            document.getElementById('submitMemeForm').addEventListener('submit', handleSubmitMeme);
             
-            const container = document.querySelector('.container');
-            container.insertBefore(successDiv, container.firstChild);
+            // Load Twitter widgets script
+            const script = document.createElement('script');
+            script.src = 'https://platform.twitter.com/widgets.js';
+            script.async = true;
+            document.head.appendChild(script);
+            
+            // Check if wallet is already connected
+            if (typeof window.ethereum !== 'undefined') {
+                window.ethereum.request({ method: 'eth_accounts' })
+                    .then(accounts => {
+                        if (accounts.length > 0) {
+                            connectWallet();
+                        }
+                    })
+                    .catch(console.error);
+            }
 
-            setTimeout(() => {
-                successDiv.remove();
-            }, 5000);
+            // Handle account changes
+            if (typeof window.ethereum !== 'undefined') {
+                window.ethereum.on('accountsChanged', (accounts) => {
+                    if (accounts.length === 0) {
+                        // User disconnected
+                        provider = null;
+                        signer = null;
+                        contract = null;
+                        userAddress = null;
+                        
+                        const walletInfo = document.getElementById('walletInfo');
+                        const connectButton = document.getElementById('connectWallet');
+                        walletInfo.innerHTML = '<span>Not Connected</span>';
+                        connectButton.textContent = 'Connect Wallet';
+                        connectButton.disabled = false;
+                        connectButton.style.opacity = '1';
+                    } else {
+                        // Account changed
+                        connectWallet();
+                    }
+                });
+
+                window.ethereum.on('chainChanged', (chainId) => {
+                    // Reload the page when chain changes
+                    window.location.reload();
+                });
+            }
         }
 
-        // Make functions globally available
-        window.approveMeme = approveMeme;
-        window.rejectMeme = rejectMeme;
-        window.toggleLike = toggleLike;
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
